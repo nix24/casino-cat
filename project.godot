@@ -22,13 +22,12 @@ _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 [debug]
 
+gdscript/warnings/shadowed_variable=2
 gdscript/warnings/untyped_declaration=2
 gdscript/warnings/unsafe_property_access=2
 gdscript/warnings/unsafe_method_access=2
 gdscript/warnings/unsafe_cast=1
 gdscript/warnings/unsafe_call_argument=2
-gdscript/warnings/return_value_discarded=0
-gdscript/warnings/shadowed_variable=2
 
 [display]
 
