@@ -81,7 +81,6 @@ static func draw_face(session: GambleSession, rng: SeededRng) -> int:
 static func roll_faces(count: int, session: GambleSession, rng: SeededRng) -> PackedInt32Array:
 	var faces := PackedInt32Array()
 	for _die: int in count:
-		@warning_ignore("return_value_discarded")
 		faces.append(draw_face(session, rng))
 	return faces
 
@@ -142,7 +141,6 @@ static func odds(
 		for _die: int in dice.dice_count:
 			var face: int = DIE_FACE_MIN + rest % DIE_SIDES
 			rest = floori(float(rest) / DIE_SIDES)
-			@warning_ignore("return_value_discarded")
 			faces.append(face)
 			probability *= _face_chance(dice, face, chance)
 		var row: GambleOddsRow = score(dice, faces, luck, payout_mult, backfire_cap)

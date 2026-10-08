@@ -13,8 +13,8 @@ const RATTLED_LUCK: int = -10
 
 ## Chance that one die's Luck reroll fires: Luck as a fraction, capped (PRD §6.0 rule 3). Negative
 ## Luck gives 0, because it cuts the payout instead (rule 6).
-static func luck_chance(luck: int) -> float:
-	return clampf(float(luck) / 100.0, 0.0, PROBABILITY_CAP)
+static func luck_chance(luck_points: int) -> float:
+	return clampf(float(luck_points) / 100.0, 0.0, PROBABILITY_CAP)
 
 
 ## Luck for a gamble of [param family] right now (PRD §6.0 rule 6, gamble-math.md). Relic Luck and
@@ -49,22 +49,24 @@ static func preview(gamble: GambleData, state: BattleState, ctx: BattleContext) 
 
 ## Exact outcome table for [param gamble] at a fixed Luck and payout multiplier.
 static func odds(
-	gamble: GambleData, luck: int, payout_mult: float, backfire_cap: int
+	gamble: GambleData, luck_points: int, payout_mult: float, max_backfire: int
 ) -> GambleOdds:
 	var dice: DiceGambleData = gamble as DiceGambleData
 	assert(dice != null, "only dice gambles have odds in T002")
 	var table := GambleOdds.new()
-	table.luck = luck
-	table.rows = DiceFamily.odds(dice, luck, payout_mult, backfire_cap)
+	table.luck = luck_points
+	table.rows = DiceFamily.odds(dice, luck_points, payout_mult, max_backfire)
 	return table
 
 
 ## Payout for one outcome. Negative Luck cuts it by 1% per point; Luck never raises a payout here,
 ## because positive Luck works through rerolls. Rounded once, at the end (PRD §6.0 rule 6).
-static func final_payout(base: int, multiplier: float, luck: int, payout_mult: float = 1.0) -> int:
+static func final_payout(
+	base: int, multiplier: float, luck_points: int, payout_mult: float = 1.0
+) -> int:
 	var luck_factor: float = 1.0
-	if luck < 0:
-		luck_factor = maxf(0.0, 1.0 - float(-luck) / 100.0)
+	if luck_points < 0:
+		luck_factor = maxf(0.0, 1.0 - float(-luck_points) / 100.0)
 	return Damage.round_half_up(float(base) * multiplier * luck_factor * payout_mult)
 
 
@@ -76,14 +78,14 @@ static func outcome_row(
 	multiplier: float,
 	backfire: int,
 	due_step: GambleData.DueStep,
-	luck: int,
+	luck_points: int,
 	payout_mult: float,
-	backfire_cap: int,
+	max_backfire: int,
 ) -> GambleOddsRow:
 	var row := GambleOddsRow.new()
 	row.label = label
-	row.payout = final_payout(base, multiplier, luck, payout_mult)
-	row.backfire = mini(backfire, backfire_cap)
+	row.payout = final_payout(base, multiplier, luck_points, payout_mult)
+	row.backfire = mini(backfire, max_backfire)
 	row.due_step = due_step
 	return row
 

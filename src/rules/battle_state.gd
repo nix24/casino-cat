@@ -5,7 +5,7 @@ extends RefCounted
 enum Outcome { ONGOING, WON, LOST }
 
 var cat: Combatant = Combatant.new()
-var enemy: Combatant = Combatant.new()
+var enemy: Combatant = Combatant.new(BattleEvent.Actor.ENEMY)
 var enemy_data: EnemyData
 var turn: int = 1
 var mp: int = 0

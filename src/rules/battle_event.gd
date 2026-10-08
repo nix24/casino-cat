@@ -48,6 +48,9 @@ enum Actor { CAT, ENEMY }
 var kind: Kind
 ## Who caused the event. For ticks and expiry, the combatant that owns the status.
 var actor: Actor
+## Who received it: the combatant whose HP, shield, or status changed. Set on DAMAGE_DEALT,
+## SHIELD_GAINED, HEALED, BACKFIRE, and STATUS_* (T003); CAT on every other kind.
+var target: Actor = Actor.CAT
 var amount: int = 0
 var value_after: int = 0
 var shield_after: int = 0

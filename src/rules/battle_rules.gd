@@ -71,8 +71,11 @@ static func preview_move(state: BattleState, slot: int, ctx: BattleContext) -> M
 	var preview := MovePreview.new()
 	preview.mp_cost = move.mp_cost
 	preview.affordable = move.mp_cost <= state.mp
+	preview.missing_mp = maxi(move.mp_cost - state.mp, 0)
 	if move.category == MoveData.Category.BASIC:
 		var repeat_count: int = _next_repeat_count(state, move)
+		preview.hits = move.hits
+		preview.triangle_mult = Suit.damage_multiplier(move.suit, state.enemy.suit)
 		preview.damage = _player_hit_amount(state, move, repeat_count, ctx.tuning) * move.hits
 	elif move.category == MoveData.Category.GAMBLE:
 		preview.odds = GambleRules.preview(move.gamble, state, ctx)
@@ -277,6 +280,7 @@ static func _keep_gamble(state: BattleState, ctx: BattleContext) -> Array[Battle
 static func _backfire(target: Combatant, amount: int, events: Array[BattleEvent]) -> void:
 	target.hp = maxi(target.hp - amount, 0)
 	var event := BattleEvent.new(BattleEvent.Kind.BACKFIRE)
+	event.target = target.side
 	event.amount = amount
 	event.value_after = target.hp
 	events.append(event)
@@ -387,12 +391,12 @@ static func _tick_statuses(
 		var turns_left: int = target.statuses[status] - 1
 		var event: BattleEvent
 		if turns_left <= 0:
-			@warning_ignore("return_value_discarded")
 			target.statuses.erase(status)
 			event = BattleEvent.new(BattleEvent.Kind.STATUS_EXPIRED, actor)
 		else:
 			target.statuses[status] = turns_left
 			event = BattleEvent.new(BattleEvent.Kind.STATUS_TICKED, actor)
+		event.target = target.side
 		event.status = status
 		event.turns = maxi(turns_left, 0)
 		events.append(event)
@@ -436,6 +440,7 @@ static func _deal_damage(
 ) -> void:
 	var absorbed: int = Damage.absorb(target, amount)
 	var event := BattleEvent.new(BattleEvent.Kind.DAMAGE_DEALT, actor)
+	event.target = target.side
 	event.amount = amount
 	event.absorbed = absorbed
 	event.value_after = target.hp
@@ -455,6 +460,7 @@ static func _gain_shield(
 	var shield_before: int = target.shield
 	target.shield = mini(shield_before + amount, tuning.shield_cap)
 	var event := BattleEvent.new(BattleEvent.Kind.SHIELD_GAINED, actor)
+	event.target = target.side
 	event.amount = target.shield - shield_before
 	event.value_after = target.shield
 	event.shield_after = target.shield
@@ -474,6 +480,7 @@ static func _heal(
 	if gained == 0:
 		return
 	var event := BattleEvent.new(BattleEvent.Kind.HEALED, actor)
+	event.target = target.side
 	event.amount = gained
 	event.value_after = target.hp
 	event.reason = reason
@@ -495,6 +502,7 @@ static func _apply_status(
 	if not target.statuses_fresh.has(status):
 		target.statuses_fresh.append(status)
 	var event := BattleEvent.new(BattleEvent.Kind.STATUS_APPLIED, actor)
+	event.target = target.side
 	event.status = status
 	event.turns = turns_after
 	events.append(event)

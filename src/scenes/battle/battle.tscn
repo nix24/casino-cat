@@ -1,0 +1,175 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/scenes/battle/battle.gd" id="1_battle"]
+[ext_resource type="Resource" path="res://src/ui/focus_frame.tres" id="2_focus"]
+[ext_resource type="PackedScene" path="res://src/ui/combatant_panel.tscn" id="3_panel"]
+[ext_resource type="PackedScene" path="res://src/ui/move_button.tscn" id="4_move"]
+[ext_resource type="PackedScene" path="res://src/ui/odds_table.tscn" id="5_odds"]
+[ext_resource type="PackedScene" path="res://src/ui/overlays/dice_overlay.tscn" id="6_dice"]
+[ext_resource type="Script" path="res://src/fx/event_player.gd" id="7_events"]
+[ext_resource type="Script" path="res://src/data/move_data.gd" id="8_move_data"]
+[ext_resource type="Resource" path="res://src/content/enemies/sewer_rat.tres" id="9_rat"]
+[ext_resource type="Resource" path="res://src/content/moves/scratch.tres" id="10_scratch"]
+[ext_resource type="Resource" path="res://src/content/moves/swipe.tres" id="11_swipe"]
+[ext_resource type="Resource" path="res://src/content/moves/paw_roll.tres" id="12_paw"]
+[ext_resource type="Resource" path="res://src/content/moves/curl_up.tres" id="13_curl"]
+
+[sub_resource type="Theme" id="Theme_battle"]
+default_font_size = 10
+Button/styles/focus = ExtResource("2_focus")
+
+[node name="Battle" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = SubResource("Theme_battle")
+script = ExtResource("1_battle")
+enemy_data = ExtResource("9_rat")
+equipped_moves = Array[ExtResource("8_move_data")]([ExtResource("10_scratch"), ExtResource("11_swipe"), ExtResource("12_paw"), ExtResource("13_curl")])
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.047, 0.055, 0.18, 1)
+
+[node name="EnemyPanel" parent="." instance=ExtResource("3_panel")]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 400.0
+offset_top = 12.0
+offset_right = 624.0
+offset_bottom = 84.0
+
+[node name="EnemyToken" type="ColorRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 480.0
+offset_top = 96.0
+offset_right = 528.0
+offset_bottom = 144.0
+mouse_filter = 2
+
+[node name="CatToken" type="ColorRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 112.0
+offset_top = 132.0
+offset_right = 160.0
+offset_bottom = 180.0
+mouse_filter = 2
+
+[node name="CatPanel" parent="." instance=ExtResource("3_panel")]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 16.0
+offset_top = 190.0
+offset_right = 240.0
+offset_bottom = 270.0
+
+[node name="ActionLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_top = 62.0
+offset_right = 640.0
+offset_bottom = 78.0
+horizontal_alignment = 1
+
+[node name="Banner" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_top = 150.0
+offset_right = 640.0
+offset_bottom = 178.0
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+
+[node name="DueLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 256.0
+offset_top = 196.0
+offset_right = 400.0
+offset_bottom = 210.0
+text = "Due ○○○○"
+
+[node name="SpeedLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 256.0
+offset_top = 214.0
+offset_right = 400.0
+offset_bottom = 228.0
+text = "speed: 1×"
+
+[node name="MoveRow" type="HBoxContainer" parent="."]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 284.0
+offset_right = 594.0
+offset_bottom = 348.0
+theme_override_constants/separation = 6
+
+[node name="Move1" parent="MoveRow" instance=ExtResource("4_move")]
+unique_name_in_owner = true
+layout_mode = 2
+focus_neighbor_left = NodePath("../Move4")
+focus_neighbor_right = NodePath("../Move2")
+
+[node name="Move2" parent="MoveRow" instance=ExtResource("4_move")]
+unique_name_in_owner = true
+layout_mode = 2
+focus_neighbor_left = NodePath("../Move1")
+focus_neighbor_right = NodePath("../Move3")
+
+[node name="Move3" parent="MoveRow" instance=ExtResource("4_move")]
+unique_name_in_owner = true
+layout_mode = 2
+focus_neighbor_left = NodePath("../Move2")
+focus_neighbor_right = NodePath("../Move4")
+
+[node name="Move4" parent="MoveRow" instance=ExtResource("4_move")]
+unique_name_in_owner = true
+layout_mode = 2
+focus_neighbor_left = NodePath("../Move3")
+focus_neighbor_right = NodePath("../Move1")
+
+[node name="MoveOdds" parent="." instance=ExtResource("5_odds")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 470.0
+offset_top = 180.0
+offset_right = 600.0
+offset_bottom = 276.0
+
+[node name="DiceOverlay" parent="." instance=ExtResource("6_dice")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 200.0
+offset_top = 84.0
+offset_right = 420.0
+offset_bottom = 194.0
+
+[node name="EventPlayer" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("7_events")
+
+[node name="Popups" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
