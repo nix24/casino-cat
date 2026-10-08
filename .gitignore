@@ -1,0 +1,24 @@
+# Godot
+.godot/
+/android/
+*.translation
+export_credentials.cfg
+
+# Builds
+build/
+
+# Agent-installed tooling (kept out of project history)
+.agents/
+skills-lock.json
+
+# Local AI and dev tooling (used here, never shared)
+.claude/
+.codegraph/
+.fallow/
+addons/godot_ai/
+AGENTS.md
+CLAUDE.md
+
+# OS / editor
+.DS_Store
+*.tmp
