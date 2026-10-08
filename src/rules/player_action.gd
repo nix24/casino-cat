@@ -11,3 +11,5 @@ var slot: int = 0
 var pouch_slot: int = 0
 ## Option picked for GAMBLE_CHOICE. Unused until T002.
 var choice: int = 0
+## Dice choice for GAMBLE_CHOICE: which dice to reroll, or none to keep (PRD §6.1).
+var gamble_choice: GambleChoice = GambleChoice.new()

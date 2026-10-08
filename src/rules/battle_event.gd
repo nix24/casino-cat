@@ -12,6 +12,9 @@ extends RefCounted
 ##   change; value_after is the MP after clamping to 0..mp_max.
 ## - INTENT_SHOWN: reason is the intent kind, amount its amount, status and turns for DEBUFF.
 ## - STATUS_TICKED, STATUS_EXPIRED: actor is the status owner.
+## - BACKFIRE: amount is the HP lost (shield does not apply), value_after the cat's HP after it.
+## - DUE_CHANGED: reason is the gamble family, amount the new pip count.
+## - REROLLS_CHANGED: amount is the rerolls left. Gamble detail lives in `gamble` (T002).
 
 enum Kind {
 	BATTLE_STARTED,
@@ -30,6 +33,15 @@ enum Kind {
 	ENEMY_ACTED,
 	BATTLE_WON,
 	BATTLE_LOST,
+	GAMBLE_STARTED,
+	GAMBLE_AWAITING_CHOICE,
+	DICE_ROLLED,
+	DICE_REROLLED,
+	LUCK_TRIGGERED,
+	GAMBLE_RESOLVED,
+	BACKFIRE,
+	DUE_CHANGED,
+	REROLLS_CHANGED,
 }
 enum Actor { CAT, ENEMY }
 
@@ -46,6 +58,8 @@ var status: StringName = &""
 var turns: int = 0
 var move_id: StringName = &""
 var reason: StringName = &""
+## Gamble detail for the GAMBLE_*, DICE_*, LUCK_TRIGGERED events. Null on every other kind.
+var gamble: GambleEventData
 
 
 func _init(event_kind: Kind, event_actor: Actor = Actor.CAT) -> void:

@@ -34,8 +34,8 @@ func _init() -> void:
 	quit(failed)
 
 
-func _find_test_files() -> PackedStringArray:
-	var found: PackedStringArray = []
+func _find_test_files() -> Array[String]:
+	var found: Array[String] = []
 	for dir_path: String in TEST_DIRS:
 		for file: String in DirAccess.get_files_at(dir_path):
 			if file.ends_with("_test.gd"):

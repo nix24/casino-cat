@@ -5,7 +5,7 @@ extends RefCounted
 ## Assertions record a failure message and let the test continue, so one run reports every
 ## broken expectation. tests/run_tests.gd discovers subclasses under tests/unit and tests/sim.
 
-var failures: PackedStringArray = []
+var failures: Array[String] = []
 var _current_test: String = ""
 
 

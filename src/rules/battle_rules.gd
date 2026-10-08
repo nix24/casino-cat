@@ -3,6 +3,7 @@ extends RefCounted
 ## Turn resolution for battles (PRD §4, §7). Each call updates the state and returns the
 ## BattleEvents in play order. The presentation plays them; the rules never animate.
 ## Architecture §3 lists the steps; resolutions R1-R12 in T001 are binding where they differ.
+## Gamble moves (T002, R8) open a GambleSession in state.pending and finish on a GAMBLE_CHOICE.
 
 ## Regen heals this much at the end of each turn (content-registry, status regen).
 const REGEN_HEAL: int = 3
@@ -24,25 +25,29 @@ static func start(enemy: EnemyData, ctx: BattleContext, _rng: SeededRng) -> Batt
 	state.mp = ctx.tuning.mp_battle_start
 	state.equipped = ctx.loadout.duplicate()
 	state.next_intent = enemy.pattern[0]
+	state.rerolls = ctx.tuning.dice_rerolls_per_battle
 
-	var start := BattleStart.new()
-	start.state = state
-	start.events.append(BattleEvent.new(BattleEvent.Kind.BATTLE_STARTED))
-	start.events.append(_turn_started_event(state.turn))
-	start.events.append(_intent_shown_event(state.next_intent))
-	return start
+	var opening := BattleStart.new()
+	opening.state = state
+	opening.events.append(BattleEvent.new(BattleEvent.Kind.BATTLE_STARTED))
+	opening.events.append(_turn_started_event(state.turn))
+	opening.events.append(_intent_shown_event(state.next_intent))
+	return opening
 
 
 ## Resolves one player action and the enemy's reply. A rejected action returns a single
 ## ACTION_REJECTED and changes nothing.
 static func apply(
-	state: BattleState, action: PlayerAction, ctx: BattleContext, _rngs: RngSet
+	state: BattleState, action: PlayerAction, ctx: BattleContext, rngs: RngSet
 ) -> Array[BattleEvent]:
 	var events: Array[BattleEvent] = []
 	var rejection: StringName = _rejection_reason(state, action, ctx)
 	if rejection != &"":
 		events.append(_rejected(rejection))
 		return events
+
+	if action.kind == PlayerAction.Kind.GAMBLE_CHOICE:
+		return _gamble_choice(state, action.gamble_choice, ctx, rngs.gamble)
 
 	var move: MoveData = _move_for_slot(state, action.slot, ctx)
 	var move_event := BattleEvent.new(BattleEvent.Kind.MOVE_USED)
@@ -52,21 +57,10 @@ static func apply(
 
 	state.repeat_count = _next_repeat_count(state, move)
 	state.last_move_id = move.id
+	if move.category == MoveData.Category.GAMBLE:
+		return _open_gamble(state, move, ctx, rngs.gamble, events)
 	_resolve_move(state, move, ctx.tuning, events)
-
-	var suit_after: Suit.Type = _suit_after_move(state, move, ctx.tuning)
-	if suit_after != state.cat.suit:
-		events.append(_suit_shifted_event(state.cat.suit, suit_after))
-		state.cat.suit = suit_after
-
-	# A win ends the turn before the enemy acts and before any end-of-turn MP is charged.
-	if state.enemy.hp <= 0:
-		return _finish(state, BattleState.Outcome.WON, BattleEvent.Kind.BATTLE_WON, events)
-	_enemy_acts(state, ctx.tuning, events)
-	if state.cat.hp <= 0:
-		return _finish(state, BattleState.Outcome.LOST, BattleEvent.Kind.BATTLE_LOST, events)
-	_end_turn(state, move, ctx.tuning, events)
-	return events
+	return _resolve_turn(state, move, ctx, events)
 
 
 ## What a move would do right now. Damage matches the DAMAGE_DEALT amounts apply() would emit
@@ -80,6 +74,8 @@ static func preview_move(state: BattleState, slot: int, ctx: BattleContext) -> M
 	if move.category == MoveData.Category.BASIC:
 		var repeat_count: int = _next_repeat_count(state, move)
 		preview.damage = _player_hit_amount(state, move, repeat_count, ctx.tuning) * move.hits
+	elif move.category == MoveData.Category.GAMBLE:
+		preview.odds = GambleRules.preview(move.gamble, state, ctx)
 	if state.next_intent.kind == IntentData.Kind.ATTACK:
 		var suit_after: Suit.Type = _suit_after_move(state, move, ctx.tuning)
 		preview.incoming_mult = Suit.damage_multiplier(state.enemy.suit, suit_after)
@@ -93,10 +89,16 @@ static func preview_move(state: BattleState, slot: int, ctx: BattleContext) -> M
 static func _rejection_reason(
 	state: BattleState, action: PlayerAction, ctx: BattleContext
 ) -> StringName:
+	if action.kind == PlayerAction.Kind.GAMBLE_CHOICE:
+		if state.pending == null:
+			return &"no_gamble_pending"
+		return DiceFamily.choice_rejection(state.pending, action.gamble_choice, state)
 	if action.kind != PlayerAction.Kind.USE_MOVE:
 		return &"not_available_yet"
 	if state.outcome != BattleState.Outcome.ONGOING:
 		return &"battle_over"
+	if state.pending != null:
+		return &"gamble_pending"
 	if action.slot < 0 or action.slot >= state.equipped.size():
 		return &"invalid_slot"
 	if _move_for_slot(state, action.slot, ctx).mp_cost > state.mp:
@@ -107,7 +109,6 @@ static func _rejection_reason(
 static func _move_for_slot(state: BattleState, slot: int, ctx: BattleContext) -> MoveData:
 	var instance: MoveInstance = state.equipped[slot]
 	var move: MoveData = ctx.moves[instance.move_id]
-	assert(move.category != MoveData.Category.GAMBLE, "gamble moves arrive in T002")
 	return move
 
 
@@ -177,6 +178,126 @@ static func _suit_after_move(state: BattleState, move: MoveData, tuning: TuningD
 	return state.cat.suit
 
 
+# --- turn tail and gambles ---------------------------------------------------------------------
+
+
+## Everything after the move's own resolution: type-shift, win and lose checks, enemy action, and
+## end of turn. Basic, utility, and gamble moves all finish here.
+static func _resolve_turn(
+	state: BattleState, move: MoveData, ctx: BattleContext, events: Array[BattleEvent]
+) -> Array[BattleEvent]:
+	var suit_after: Suit.Type = _suit_after_move(state, move, ctx.tuning)
+	if suit_after != state.cat.suit:
+		events.append(_suit_shifted_event(state.cat.suit, suit_after))
+		state.cat.suit = suit_after
+
+	# A win ends the turn before the enemy acts and before any end-of-turn MP is charged.
+	if state.enemy.hp <= 0:
+		return _finish(state, BattleState.Outcome.WON, BattleEvent.Kind.BATTLE_WON, events)
+	# Backfire can take the cat to 0 before the enemy acts (PRD §6.0 rule 8).
+	if state.cat.hp <= 0:
+		return _finish(state, BattleState.Outcome.LOST, BattleEvent.Kind.BATTLE_LOST, events)
+	_enemy_acts(state, ctx.tuning, events)
+	if state.cat.hp <= 0:
+		return _finish(state, BattleState.Outcome.LOST, BattleEvent.Kind.BATTLE_LOST, events)
+	_end_turn(state, move, ctx.tuning, events)
+	return events
+
+
+## Opens a gamble (PRD §6.0 rule 2). The odds are snapshotted, the queued forced faces move into the
+## session, and the family rolls. The turn waits in state.pending for a GAMBLE_CHOICE.
+static func _open_gamble(
+	state: BattleState,
+	move: MoveData,
+	ctx: BattleContext,
+	rng: SeededRng,
+	events: Array[BattleEvent]
+) -> Array[BattleEvent]:
+	assert(move.gamble != null, "gamble move %s has no gamble data" % move.id)
+	var session := GambleSession.new()
+	session.move_id = move.id
+	session.family = move.gamble.family
+	session.odds = GambleRules.preview(move.gamble, state, ctx)
+	session.forced = ctx.forced.duplicate()
+	ctx.forced.clear()
+	state.pending = session
+
+	var started := BattleEvent.new(BattleEvent.Kind.GAMBLE_STARTED)
+	started.gamble = GambleEventData.new()
+	started.gamble.odds = session.odds
+	events.append(started)
+	events.append_array(DiceFamily.start(session, ctx, rng))
+	return events
+
+
+## A GAMBLE_CHOICE with dice listed rerolls them. An empty choice keeps the faces and resolves.
+static func _gamble_choice(
+	state: BattleState, choice: GambleChoice, ctx: BattleContext, rng: SeededRng
+) -> Array[BattleEvent]:
+	if choice.reroll_dice.is_empty():
+		return _keep_gamble(state, ctx)
+	return DiceFamily.choose(state.pending, choice, state, rng)
+
+
+## Resolves the held faces. The payout and backfire come from the same row the odds table showed
+## (PRD §6.0 rule 2), then the turn's shared tail runs.
+static func _keep_gamble(state: BattleState, ctx: BattleContext) -> Array[BattleEvent]:
+	var session: GambleSession = state.pending
+	var move: MoveData = ctx.moves[session.move_id]
+	var dice: DiceGambleData = DiceFamily.gamble_of(session, ctx)
+	var row: GambleOddsRow = DiceFamily.score(
+		dice,
+		session.faces,
+		session.odds.luck,
+		GambleRules.status_mult(state),
+		GambleRules.backfire_cap(state, ctx)
+	)
+	session.tier = row.label
+	session.damage = row.payout
+	session.backfire = row.backfire
+	session.finished = true
+	state.pending = null
+
+	var events: Array[BattleEvent] = []
+	var resolved := BattleEvent.new(BattleEvent.Kind.GAMBLE_RESOLVED)
+	resolved.amount = row.payout
+	resolved.gamble = GambleEventData.new()
+	resolved.gamble.tier = row.label
+	resolved.gamble.payout = row.payout
+	events.append(resolved)
+	if row.payout > 0:
+		_deal_damage(state.enemy, BattleEvent.Actor.CAT, row.payout, events)
+	if row.backfire > 0:
+		_backfire(state.cat, row.backfire, events)
+	_settle_due(session.family, row.due_step, ctx, events)
+	return _resolve_turn(state, move, ctx, events)
+
+
+## Backfire skips the shield and comes straight out of HP (PRD §6.0 rule 8, decisions D17).
+static func _backfire(target: Combatant, amount: int, events: Array[BattleEvent]) -> void:
+	target.hp = maxi(target.hp - amount, 0)
+	var event := BattleEvent.new(BattleEvent.Kind.BACKFIRE)
+	event.amount = amount
+	event.value_after = target.hp
+	events.append(event)
+
+
+## Moves the family's Due meter for one outcome (PRD §6.0 rule 7). DUE_CHANGED is emitted only when
+## the pips change.
+static func _settle_due(
+	family: StringName, due_step: GambleData.DueStep, ctx: BattleContext, events: Array[BattleEvent]
+) -> void:
+	var pips_before: int = ctx.due.get(family, 0)
+	var pips_after: int = GambleRules.due_after(pips_before, due_step, ctx.tuning)
+	if pips_after == pips_before:
+		return
+	ctx.due[family] = pips_after
+	var event := BattleEvent.new(BattleEvent.Kind.DUE_CHANGED)
+	event.reason = family
+	event.amount = pips_after
+	events.append(event)
+
+
 # --- enemy action ------------------------------------------------------------------------------
 
 
@@ -239,6 +360,7 @@ static func _end_turn(
 	var dealt: int = _mp_from_hits(events, BattleEvent.Actor.CAT, tuning.mp_per_damage_dealt)
 	_change_mp(state, tuning, BattleEvent.Actor.CAT, &"dealt", dealt, events)
 	var taken: int = _mp_from_hits(events, BattleEvent.Actor.ENEMY, tuning.mp_per_damage_taken)
+	taken += _mp_from_backfire(events, tuning.mp_per_damage_taken)
 	_change_mp(state, tuning, BattleEvent.Actor.CAT, &"taken", taken, events)
 	_change_mp(state, tuning, BattleEvent.Actor.CAT, &"move", _move_mp_gain(move), events)
 
@@ -265,6 +387,7 @@ static func _tick_statuses(
 		var turns_left: int = target.statuses[status] - 1
 		var event: BattleEvent
 		if turns_left <= 0:
+			@warning_ignore("return_value_discarded")
 			target.statuses.erase(status)
 			event = BattleEvent.new(BattleEvent.Kind.STATUS_EXPIRED, actor)
 		else:
@@ -284,6 +407,15 @@ static func _mp_from_hits(
 	for event: BattleEvent in events:
 		if event.kind == BattleEvent.Kind.DAMAGE_DEALT and event.actor == attacker:
 			total += floori(float(event.amount - event.absorbed) * rate)
+	return total
+
+
+## MP from backfire the cat took this turn. Backfire is damage taken (decisions D17).
+static func _mp_from_backfire(events: Array[BattleEvent], rate: float) -> int:
+	var total: int = 0
+	for event: BattleEvent in events:
+		if event.kind == BattleEvent.Kind.BACKFIRE:
+			total += floori(float(event.amount) * rate)
 	return total
 
 

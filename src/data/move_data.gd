@@ -1,6 +1,6 @@
 class_name MoveData
 extends Resource
-## One player move (PRD §5.2). T001 covers basic and utility moves; gamble data arrives with T002.
+## One player move (PRD §5.2). Basic and utility moves use effects; gamble moves also set gamble.
 
 enum Category { BASIC, UTILITY, GAMBLE, SIGNATURE }
 enum Rarity { STARTER, COMMON, UNCOMMON, RARE, SIGNATURE }
@@ -23,6 +23,8 @@ enum Rarity { STARTER, COMMON, UNCOMMON, RARE, SIGNATURE }
 @export var mp_cost: int = 0
 ## Effects resolved in order after the damage hits.
 @export var effects: Array[EffectData] = []
+## Outcome data for GAMBLE moves. Null for every other category.
+@export var gamble: GambleData
 ## Number of modifier slots the move starts with (PRD §5.2).
 @export var modifier_slots: int = 2
 ## One plain line with {placeholders} filled from the fields above.

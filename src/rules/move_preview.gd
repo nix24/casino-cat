@@ -10,3 +10,5 @@ var damage: int = 0
 var incoming_mult: float = 1.0
 var mp_cost: int = 0
 var affordable: bool = false
+## Exact outcome table for a GAMBLE move, shown before the player commits. Null for other moves.
+var odds: GambleOdds

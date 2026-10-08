@@ -3,10 +3,10 @@
 Run: uv run python -I tools/gamble_math.py  (stdlib only).
 the GDScript sim tests in tests/sim/ must agree with it within the PRD tolerances.
 """
-from collections import Counter
+from collections import Counter, defaultdict
 from fractions import Fraction as F
 from functools import lru_cache
-from itertools import combinations, permutations, product
+from itertools import combinations, product
 
 
 def tier(s):
@@ -24,7 +24,7 @@ def dice_table(n_dice, keep, low=1):
     tot = (7 - low) ** n_dice
     em = sum(F(c, tot) * tier(s)[0] for s, c in dist.items())
     bf = sum(F(c, tot) * tier(s)[1] for s, c in dist.items())
-    tiers = Counter()
+    tiers: defaultdict[str, F] = defaultdict(F)
     for s, c in dist.items():
         name = {2:"snake",12:"boxcars",11:"lucky"}.get(s, "cold" if s<=5 else "fair" if s<=8 else "hot")
         tiers[name] += F(c, tot)
@@ -104,9 +104,9 @@ def best(cells):
     if best2: return max(best2), 0
     return 4, 10
 def scratch(n):
-    ed = em = F(0); dist = Counter()
+    ed = em = F(0); dist: defaultdict[int, F] = defaultdict(F)
     for cells in product("FPY", repeat=n):
-        p = 1
+        p = F(1)
         for s in cells: p *= W[s]
         d, m = best(cells); ed += p*d; em += p*m; dist[d] += p
     return ed, em, dist

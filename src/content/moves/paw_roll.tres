@@ -1,0 +1,81 @@
+[gd_resource type="Resource" script_class="MoveData" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://src/data/move_data.gd" id="1_move"]
+[ext_resource type="Script" path="res://src/data/dice_gamble_data.gd" id="2_dice"]
+[ext_resource type="Script" path="res://src/data/dice_tier_data.gd" id="3_tier"]
+
+[sub_resource type="Resource" id="DiceTierData_snake"]
+script = ExtResource("3_tier")
+min_sum = 2
+max_sum = 2
+multiplier = 0.0
+backfire = 4
+label = &"Snake eyes"
+due_step = 1
+
+[sub_resource type="Resource" id="DiceTierData_cold"]
+script = ExtResource("3_tier")
+min_sum = 3
+max_sum = 5
+multiplier = 0.5
+backfire = 0
+label = &"Cold"
+due_step = 1
+
+[sub_resource type="Resource" id="DiceTierData_fair"]
+script = ExtResource("3_tier")
+min_sum = 6
+max_sum = 8
+multiplier = 1.0
+backfire = 0
+label = &"Fair"
+due_step = 0
+
+[sub_resource type="Resource" id="DiceTierData_hot"]
+script = ExtResource("3_tier")
+min_sum = 9
+max_sum = 10
+multiplier = 2.0
+backfire = 0
+label = &"Hot"
+due_step = 0
+
+[sub_resource type="Resource" id="DiceTierData_lucky"]
+script = ExtResource("3_tier")
+min_sum = 11
+max_sum = 11
+multiplier = 3.0
+backfire = 0
+label = &"Lucky"
+due_step = 2
+
+[sub_resource type="Resource" id="DiceTierData_boxcars"]
+script = ExtResource("3_tier")
+min_sum = 12
+max_sum = 12
+multiplier = 4.0
+backfire = 0
+label = &"Boxcars"
+due_step = 2
+
+[sub_resource type="Resource" id="DiceGambleData_paw_roll"]
+script = ExtResource("2_dice")
+family = &"dice"
+dice_count = 2
+keep_best = 2
+base_damage = 10
+tiers = [SubResource("DiceTierData_snake"), SubResource("DiceTierData_cold"), SubResource("DiceTierData_fair"), SubResource("DiceTierData_hot"), SubResource("DiceTierData_lucky"), SubResource("DiceTierData_boxcars")]
+
+[resource]
+script = ExtResource("1_move")
+id = &"paw_roll"
+display_name = "Paw Roll"
+suit = 3
+category = 2
+rarity = 0
+base_damage = 10
+hits = 1
+mp_cost = 30
+gamble = SubResource("DiceGambleData_paw_roll")
+description = "Roll 2d6 on {damage}. Sum tiers multiply it. Snake eyes backfire {backfire}."
+flavor = "Roll the bones. Accept the consequences."

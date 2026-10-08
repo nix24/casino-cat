@@ -18,3 +18,7 @@ var intent_index: int = 0
 ## The intent the enemy will perform at the end of this turn, already shown to the player.
 var next_intent: IntentData
 var outcome: Outcome = Outcome.ONGOING
+## Rerolls left for dice gambles this battle (PRD §6.1). Set from tuning at battle start.
+var rerolls: int = 0
+## The gamble waiting for a player choice, or null. While set, only GAMBLE_CHOICE is accepted.
+var pending: GambleSession
