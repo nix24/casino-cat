@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://src/data/intent_data.gd" id="2_intent"]
+
+[sub_resource type="Resource" id="IntentData_pigeon_1"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 4
+
+[sub_resource type="Resource" id="IntentData_pigeon_2"]
+script = ExtResource("2_intent")
+kind = 5
+amount = 10
+
+[sub_resource type="Resource" id="IntentData_pigeon_3"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 6
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"pickpocket_pigeon"
+display_name = "Pickpocket Pigeon"
+act = 1
+tier = 0
+suit = 1
+max_hp = 20
+pattern = Array[ExtResource("2_intent")]([SubResource("IntentData_pigeon_1"), SubResource("IntentData_pigeon_2"), SubResource("IntentData_pigeon_3")])
+first_battle_pool = true

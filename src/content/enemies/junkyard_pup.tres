@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://src/data/intent_data.gd" id="2_intent"]
+
+[sub_resource type="Resource" id="IntentData_pup_1"]
+script = ExtResource("2_intent")
+kind = 4
+status = &"weak"
+turns = 2
+
+[sub_resource type="Resource" id="IntentData_pup_2"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 7
+
+[sub_resource type="Resource" id="IntentData_pup_3"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 7
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"junkyard_pup"
+display_name = "Junkyard Pup"
+act = 1
+tier = 0
+suit = 0
+max_hp = 28
+pattern = Array[ExtResource("2_intent")]([SubResource("IntentData_pup_1"), SubResource("IntentData_pup_2"), SubResource("IntentData_pup_3")])
+first_battle_pool = true

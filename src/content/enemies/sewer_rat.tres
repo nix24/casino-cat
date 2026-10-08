@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://src/data/intent_data.gd" id="2_intent"]
+
+[sub_resource type="Resource" id="IntentData_rat_1"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 5
+
+[sub_resource type="Resource" id="IntentData_rat_2"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 5
+
+[sub_resource type="Resource" id="IntentData_rat_3"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 8
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"sewer_rat"
+display_name = "Sewer Rat"
+act = 1
+tier = 0
+suit = 0
+max_hp = 22
+pattern = Array[ExtResource("2_intent")]([SubResource("IntentData_rat_1"), SubResource("IntentData_rat_2"), SubResource("IntentData_rat_3")])
+first_battle_pool = true
