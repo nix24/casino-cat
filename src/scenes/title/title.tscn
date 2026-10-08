@@ -46,7 +46,7 @@ theme_override_colors/font_color = Color(0.62, 0.459, 0.482, 1)
 text = "M0 scaffold - placeholder title"
 horizontal_alignment = 1
 
-[node name="NoRealMoney" type="Label" parent="Layout" unique_id=206655434]
+[node name="Notice" type="Label" parent="Layout" unique_id=206655434]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.62, 0.459, 0.482, 1)

@@ -1,5 +1,5 @@
 extends TestCase
-## The main scene must load and carry the "no real money" notice (PRD: Responsible theming).
+## The main scene must load and carry the title notice (PRD §16.7).
 
 
 func test_main_scene_loads_with_notice() -> void:
@@ -9,6 +9,6 @@ func test_main_scene_loads_with_notice() -> void:
 	if scene == null:
 		return
 	var root: Node = scene.instantiate()
-	var notice: Label = root.get_node_or_null("%NoRealMoney")
-	assert_true(notice != null and notice.text.contains("No real money"))
+	var notice: Label = root.get_node_or_null("%Notice")
+	assert_true(notice != null and notice.text == "He has a real problem.")
 	root.free()
