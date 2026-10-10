@@ -26,3 +26,17 @@ func test_range_int_stays_in_bounds() -> void:
 	for i: int in 1000:
 		var roll: int = rng.range_int(1, 6)
 		assert_true(roll >= 1 and roll <= 6, "roll %d out of range" % roll)
+
+
+func test_state_round_trip() -> void:
+	var rng := SeededRng.derive("KITTY-7731", "gamble")
+	for i: int in 5:
+		rng.next_u32()
+	var saved: int = rng.get_state()
+	var expected: Array[int] = []
+	for i: int in 5:
+		expected.append(rng.next_u32())
+	var restored := SeededRng.derive("KITTY-7731", "gamble")
+	restored.set_state(saved)
+	for i: int in 5:
+		assert_eq(restored.next_u32(), expected[i], "draw %d after restore" % i)

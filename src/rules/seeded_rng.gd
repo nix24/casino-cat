@@ -59,3 +59,14 @@ func next_float() -> float:
 ## True with probability [param chance] (0.0 to 1.0).
 func chance(probability: float) -> bool:
 	return next_float() < probability
+
+
+## The raw xorshift state. Save it with the run so a stream resumes exactly where it stopped.
+func get_state() -> int:
+	return _state
+
+
+## Restores a state from [method get_state]. Zero is the one state xorshift can never leave.
+func set_state(state: int) -> void:
+	assert(state != 0, "xorshift state must be non-zero")
+	_state = state
