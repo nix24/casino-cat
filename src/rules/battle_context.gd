@@ -14,3 +14,22 @@ var due: Dictionary[StringName, int] = {}
 var luck_bonus: int = 0
 ## Faces the next gamble's dice draw before the RNG, in order. Consumed when that gamble opens.
 var forced: Array[int] = []
+## Dev console only (D36): the cat cannot drop below 1 HP. Never set in a release build.
+var god_mode: bool = false
+
+
+## The context for one battle of [param run]. Copies the loadout and Due, so the battle changes its
+## own copies and the run keeps its state until the battle ends. Game and replays share this path.
+static func from_run(run: RunState, db: ContentDb) -> BattleContext:
+	var ctx := BattleContext.new()
+	ctx.tuning = db.tuning()
+	for run_move: MoveInstance in run.equipped:
+		var move_data: MoveData = db.move(run_move.move_id)
+		assert(move_data != null, "run loadout has an unknown move: %s" % run_move.move_id)
+		ctx.moves[run_move.move_id] = move_data
+		var instance := MoveInstance.new()
+		instance.move_id = run_move.move_id
+		instance.modifier_ids = run_move.modifier_ids.duplicate()
+		ctx.loadout.append(instance)
+	ctx.due = run.due.duplicate()
+	return ctx

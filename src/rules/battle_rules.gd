@@ -41,6 +41,7 @@ static func apply(
 	state: BattleState, action: PlayerAction, ctx: BattleContext, rngs: RngSet
 ) -> Array[BattleEvent]:
 	var events: Array[BattleEvent] = []
+	state.cat.hp_floor = 1 if ctx.god_mode else 0
 	var rejection: StringName = _rejection_reason(state, action, ctx)
 	if rejection != &"":
 		events.append(_rejected(rejection))
@@ -278,7 +279,7 @@ static func _keep_gamble(state: BattleState, ctx: BattleContext) -> Array[Battle
 
 ## Backfire skips the shield and comes straight out of HP (PRD §6.0 rule 8, decisions D17).
 static func _backfire(target: Combatant, amount: int, events: Array[BattleEvent]) -> void:
-	target.hp = maxi(target.hp - amount, 0)
+	target.hp = maxi(target.hp - amount, target.hp_floor)
 	var event := BattleEvent.new(BattleEvent.Kind.BACKFIRE)
 	event.target = target.side
 	event.amount = amount

@@ -14,6 +14,8 @@ var statuses: Dictionary[StringName, int] = {}
 var statuses_fresh: Array[StringName] = []
 ## Flat damage added to every hit this combatant deals. Always 0 in T001.
 var flat_damage_bonus: int = 0
+## Lowest HP damage can reduce this combatant to. Dev console god mode sets it to 1 on the cat.
+var hp_floor: int = 0
 
 
 func _init(combatant_side: BattleEvent.Actor = BattleEvent.Actor.CAT) -> void:

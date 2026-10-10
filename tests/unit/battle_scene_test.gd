@@ -55,6 +55,37 @@ func test_confirm_skips_and_tab_cycles_speed() -> void:
 	_close_battle(scene)
 
 
+func test_setup_uses_given_context() -> void:
+	var db := ContentDb.load_all()
+	var run := RunState.start("KITTY-7731", db.tuning())
+	run.equipped.reverse()
+	var scene := (load(BATTLE_PATH) as PackedScene).instantiate() as BattleScene
+	scene.speed = EventPlayer.SPEED_INSTANT
+	var ctx := BattleContext.from_run(run, db)
+	scene.setup(db.enemy(&"sewer_rat"), ctx, RngSet.for_seed("KITTY-7731"))
+	var speeds: Array[int] = []
+	scene.speed_changed.connect(func(new_speed: int) -> void: speeds.append(new_speed))
+	_root().add_child(scene)
+
+	assert_true(
+		_move_button(scene, 0).text.begins_with("Curl Up"), "slot 1 shows the given loadout"
+	)
+	_press(&"toggle_speed")
+	assert_eq(speeds, [EventPlayer.SPEED_NORMAL], "speed_changed emits the new speed")
+	_close_battle(scene)
+
+
+func test_action_sent_once_per_accepted_move() -> void:
+	var scene: BattleScene = _open_battle()
+	var sent: Array[PlayerAction] = []
+	scene.action_sent.connect(func(action: PlayerAction) -> void: sent.append(action))
+	scene.use_move(SLOT_SWIPE)
+	assert_eq(sent.size(), 1, "one accepted move, one action_sent")
+	assert_eq(sent[0].kind, PlayerAction.Kind.USE_MOVE, "action kind")
+	assert_eq(sent[0].slot, SLOT_SWIPE, "action slot")
+	_close_battle(scene)
+
+
 # --- helpers ---------------------------------------------------------------------------------
 
 

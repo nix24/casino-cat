@@ -19,6 +19,9 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 [autoload]
 
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
+Settings="*res://src/run/settings.gd"
+Sfx="*res://src/fx/sfx.gd"
+Game="*res://src/run/game.gd"
 
 [debug]
 
@@ -41,6 +44,10 @@ window/stretch/scale_mode="integer"
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg")
+
+[gui]
+
+theme/custom_font="res://assets/fonts/ui_font.tres"
 
 [input]
 

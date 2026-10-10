@@ -1,5 +1,7 @@
 [gd_scene format=3 uid="uid://dyn6apv12g30d"]
 
+[ext_resource type="Script" path="res://src/scenes/title/title.gd" id="1_title"]
+
 [node name="Title" type="Control" unique_id=1570586247]
 layout_mode = 3
 anchors_preset = 15
@@ -7,6 +9,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("1_title")
 
 [node name="NightSky" type="ColorRect" parent="." unique_id=1050345774]
 layout_mode = 1
@@ -25,9 +28,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -200.0
-offset_top = -60.0
+offset_top = -150.0
 offset_right = 200.0
-offset_bottom = 60.0
+offset_bottom = 150.0
 grow_horizontal = 2
 grow_vertical = 2
 alignment = 1
@@ -40,11 +43,73 @@ theme_override_font_sizes/font_size = 32
 text = "CASINO CAT"
 horizontal_alignment = 1
 
-[node name="Milestone" type="Label" parent="Layout" unique_id=960805673]
+[node name="Continue" type="Button" parent="Layout"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text = "Continue"
+
+[node name="NewRunRow" type="HBoxContainer" parent="Layout"]
+layout_mode = 2
+
+[node name="SeedInput" type="LineEdit" parent="Layout/NewRunRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "seed (optional)"
+
+[node name="NewRun" type="Button" parent="Layout/NewRunRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "New Run"
+
+[node name="Settings" type="Button" parent="Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Settings"
+
+[node name="Quit" type="Button" parent="Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Quit"
+
+[node name="SaveWarning" type="Label" parent="Layout"]
+unique_name_in_owner = true
+visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0.62, 0.459, 0.482, 1)
-text = "M0 scaffold - placeholder title"
+theme_override_font_sizes/font_size = 10
 horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Unreadable" type="PanelContainer" parent="Layout"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="UnreadableContent" type="VBoxContainer" parent="Layout/Unreadable"]
+layout_mode = 2
+
+[node name="UnreadableMessage" type="Label" parent="Layout/Unreadable/UnreadableContent"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="UnreadableButtons" type="HBoxContainer" parent="Layout/Unreadable/UnreadableContent"]
+layout_mode = 2
+
+[node name="UnreadableNewRun" type="Button" parent="Layout/Unreadable/UnreadableContent/UnreadableButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "New Run"
+
+[node name="UnreadableBack" type="Button" parent="Layout/Unreadable/UnreadableContent/UnreadableButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Back"
 
 [node name="Notice" type="Label" parent="Layout" unique_id=206655434]
 unique_name_in_owner = true

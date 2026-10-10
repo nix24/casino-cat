@@ -1,0 +1,38 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/debug/dev_console.gd" id="1_dev_console"]
+
+[node name="DevConsole" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_dev_console")
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Layout" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+
+[node name="Output" type="RichTextLabel" parent="Panel/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+scroll_following = true
+selection_enabled = true
+
+[node name="Input" type="LineEdit" parent="Panel/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "command (help lists them)"

@@ -5,10 +5,14 @@ extends Control
 ## plays the returned BattleEvents through EventPlayer, so every number on screen comes from an
 ## event.
 
-## Emitted after BATTLE_WON or BATTLE_LOST has played. Nothing listens yet (T006 wires it).
+## Emitted after BATTLE_WON or BATTLE_LOST has played. Game listens and moves the run on.
 signal battle_finished(outcome: BattleState.Outcome)
 ## Emitted with the events of each action the player sends, before they play (decisions D36).
 signal events_applied(events: Array[BattleEvent])
+## Emitted for each action the rules accepted, so Game can log it for replay (decisions D38).
+signal action_sent(action: PlayerAction)
+## Emitted when the player cycles the battle speed, so Game can save it to Settings.
+signal speed_changed(speed: int)
 
 ## Action names for the move keys, one per loadout slot.
 const MOVE_ACTIONS: Array[StringName] = [&"move_1", &"move_2", &"move_3", &"move_4"]
@@ -20,7 +24,7 @@ const GREYBOX_SEED: String = "casino-cat-greybox"
 ## The cat's loadout, slots 0 to 3. battle.tscn sets it to the starter kit.
 @export var equipped_moves: Array[MoveData] = []
 
-## 0 = 1×, 1 = 2×, 2 = instant (EventPlayer.SPEED_*). Held here until T006 moves it to Settings.
+## 0 = 1×, 1 = 2×, 2 = instant (EventPlayer.SPEED_*). Game sets it from Settings before the battle.
 var speed: int = EventPlayer.SPEED_NORMAL
 
 var _state: BattleState
@@ -48,13 +52,23 @@ var _cat_attack_suit: Suit.Type = Suit.Type.CLUBS
 ]
 
 
+## Sets the enemy, context, and RNG streams before the battle enters the tree. Game uses this for
+## a run's battle. A battle opened on its own skips it and gets the greybox defaults in _ready.
+func setup(enemy: EnemyData, ctx: BattleContext, rngs: RngSet) -> void:
+	enemy_data = enemy
+	_ctx = ctx
+	_rngs = rngs
+
+
 func _ready() -> void:
+	if _ctx == null:
+		_ctx = _build_context()
+	if _rngs == null:
+		_rngs = RngSet.for_seed(GREYBOX_SEED)
 	assert(
-		equipped_moves.size() == _move_buttons.size(),
-		"the battle needs one move button per equipped move"
+		_ctx.loadout.size() == _move_buttons.size(),
+		"the battle needs one move button per loadout slot"
 	)
-	_ctx = _build_context()
-	_rngs = RngSet.for_seed(GREYBOX_SEED)
 	var start: BattleStart = BattleRules.start(enemy_data, _ctx, _rngs.battle)
 	_state = start.state
 	_setup_panels()
@@ -84,6 +98,7 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"toggle_speed"):
 		speed = (speed + 1) % (EventPlayer.SPEED_INSTANT + 1)
 		_apply_speed()
+		speed_changed.emit(speed)
 		get_viewport().set_input_as_handled()
 		return
 	if not _event_player.is_idle() and _is_skip_press(event):
@@ -105,8 +120,8 @@ func _is_skip_press(event: InputEvent) -> bool:
 	return event.is_action_pressed(&"confirm") or event.is_action_pressed(&"ui_accept")
 
 
-## ponytail: builds the context from the scene's own loadout. T011 replaces this with
-## BattleContext.from_run, which reads the run's Due, Luck, and loadout.
+## ponytail: a battle opened without Game builds its context from the scene's own loadout. Game
+## passes BattleContext.from_run through setup() instead, so this path only serves the greybox.
 func _build_context() -> BattleContext:
 	var ctx := BattleContext.new()
 	for move: MoveData in equipped_moves:
@@ -129,7 +144,8 @@ func _setup_panels() -> void:
 ## MP cost of each equipped gamble move, for the tick marks on the MP bar.
 func _gamble_costs() -> PackedInt32Array:
 	var costs := PackedInt32Array()
-	for move: MoveData in equipped_moves:
+	for instance: MoveInstance in _ctx.loadout:
+		var move: MoveData = _ctx.moves[instance.move_id]
 		if move.category == MoveData.Category.GAMBLE:
 			costs.append(move.mp_cost)
 	return costs
@@ -138,7 +154,7 @@ func _gamble_costs() -> PackedInt32Array:
 func _setup_move_buttons() -> void:
 	for slot: int in _move_buttons.size():
 		var button: MoveButton = _move_buttons[slot]
-		button.setup(slot, equipped_moves[slot])
+		button.setup(slot, _ctx.moves[_ctx.loadout[slot].move_id])
 		button.pressed.connect(use_move.bind(slot))
 		button.focus_entered.connect(_show_odds_for.bind(button))
 		button.mouse_entered.connect(_show_odds_for.bind(button))
@@ -156,7 +172,37 @@ func _send(action: PlayerAction) -> void:
 		push_warning("action rejected: %s" % events[0].reason)
 		_set_input_on(true)
 		return
+	action_sent.emit(action)
 	_event_player.enqueue(events)
+
+
+## Dev console only (D36): the live battle state, so commands can edit it.
+func debug_state() -> BattleState:
+	return _state
+
+
+## Dev console only (D36): the live battle context, so the console can set god mode and force dice.
+func debug_context() -> BattleContext:
+	return _ctx
+
+
+## Dev console only (D36): the live RNG streams, so the overlay can show their states.
+func debug_rngs() -> RngSet:
+	return _rngs
+
+
+## Dev console only (D36): shows the cat's current HP and MP after a console edit. It goes through
+## events like every other number on screen.
+func debug_sync() -> void:
+	var healed := BattleEvent.new(BattleEvent.Kind.HEALED)
+	healed.target = BattleEvent.Actor.CAT
+	healed.value_after = _state.cat.hp
+	_cat_panel.apply_event(healed, 0.0)
+	var mp_changed := BattleEvent.new(BattleEvent.Kind.MP_CHANGED)
+	mp_changed.value_after = _state.mp
+	_cat_panel.apply_event(mp_changed, 0.0)
+	_refresh_previews()
+	_set_input_on(_is_input_on)
 
 
 func _set_input_on(is_on: bool) -> void:

@@ -187,6 +187,26 @@ func test_lose_when_cat_hits_zero() -> void:
 	assert_eq(last.kind, BattleEvent.Kind.BATTLE_LOST, "last event")
 	assert_eq(state.outcome, BattleState.Outcome.LOST, "outcome")
 	assert_eq(state.cat.hp, 0, "cat hp floors at zero")
+	_check_god_mode_floors_cat_hp_at_1()
+
+
+## Runs from test_lose_when_cat_hits_zero: gdlint caps public test methods per file at 20.
+func _check_god_mode_floors_cat_hp_at_1() -> void:
+	var rngs := RngSet.for_seed("test")
+	var ctx := _starter_context()
+	ctx.god_mode = true
+	var state := _battle_at(_dummy(20, Suit.Type.CLUBS, 5), 0, ctx, rngs)
+	state.cat.hp = 5
+	# The same hit as the loss test above, but god mode keeps the cat at 1 HP and the battle going.
+	BattleRules.apply(state, _use(SLOT_SCRATCH), ctx, rngs)
+	assert_eq(state.cat.hp, 1, "god mode cat hp")
+	assert_eq(state.outcome, BattleState.Outcome.ONGOING, "god mode outcome")
+
+	ctx.god_mode = false
+	var lost_state := _battle_at(_dummy(20, Suit.Type.CLUBS, 5), 0, ctx, rngs)
+	lost_state.cat.hp = 5
+	BattleRules.apply(lost_state, _use(SLOT_SCRATCH), ctx, rngs)
+	assert_eq(lost_state.outcome, BattleState.Outcome.LOST, "without god mode the hit loses")
 
 
 func test_mp_charge_is_end_of_turn() -> void:

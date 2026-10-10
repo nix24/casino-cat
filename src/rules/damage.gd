@@ -38,10 +38,10 @@ static func hit_amount(
 
 
 ## Shield takes the first part of [param amount]. Mutates target shield and hp, and returns the
-## part the shield absorbed. HP never drops below 0.
+## part the shield absorbed. HP never drops below the target's hp_floor (0 unless god mode).
 static func absorb(target: Combatant, amount: int) -> int:
 	assert(amount >= 0, "damage cannot be negative")
 	var absorbed: int = mini(target.shield, amount)
 	target.shield -= absorbed
-	target.hp = maxi(target.hp - (amount - absorbed), 0)
+	target.hp = maxi(target.hp - (amount - absorbed), target.hp_floor)
 	return absorbed

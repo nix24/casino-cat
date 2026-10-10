@@ -1,0 +1,8 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/debug/debug_overlay.gd" id="1_debug_overlay"]
+
+[node name="DebugOverlay" type="Label"]
+position = Vector2(4, 4)
+theme_override_font_sizes/font_size = 8
+script = ExtResource("1_debug_overlay")

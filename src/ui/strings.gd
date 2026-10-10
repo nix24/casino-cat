@@ -21,6 +21,9 @@ const HEAL_COLOR: Color = Color("#7be08a")
 const SHIELD_COLOR: Color = Color("#9fd8ff")
 const BACKFIRE_COLOR: Color = Color("#ff5a5a")
 const TICK_COLOR: Color = Color("#f2e7b2")
+const RUN_INFO_FORMAT: String = "Seed %s · HP %d/%d · %d Purrls"
+const SAVE_UNAVAILABLE: String = "Save unavailable here. Recent progress may be lost."
+const TITLE_UNREADABLE: String = "Save unreadable. Start a new run?"
 
 
 ## Glyph for [param suit]: ♠ ♥ ♦ ♣.
