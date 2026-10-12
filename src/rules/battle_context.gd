@@ -10,6 +10,9 @@ var moves: Dictionary[StringName, MoveData] = {}
 var loadout: Array[MoveInstance] = []
 ## Due pips per gamble family, kept across battles by the run (PRD §6.0 rule 7). Rules update it.
 var due: Dictionary[StringName, int] = {}
+## The run's relics in acquisition order, and every modifier the loadout uses, by id (T013).
+var relics: Array[RelicData] = []
+var modifiers: Dictionary[StringName, ModifierData] = {}
 ## Luck from relics and other sources, added to every gamble's Luck. 0 until T013.
 var luck_bonus: int = 0
 ## Faces the next gamble's dice draw before the RNG, in order. Consumed when that gamble opens.
@@ -33,7 +36,16 @@ static func from_run(run: RunState, db: ContentDb) -> BattleContext:
 		var instance := MoveInstance.new()
 		instance.move_id = run_move.move_id
 		instance.modifier_ids = run_move.modifier_ids.duplicate()
+		instance.suit_override = run_move.suit_override
 		ctx.loadout.append(instance)
+		for modifier_id: StringName in run_move.modifier_ids:
+			var modifier: ModifierData = db.modifier(modifier_id)
+			assert(modifier != null, "run loadout has an unknown modifier: %s" % modifier_id)
+			ctx.modifiers[modifier_id] = modifier
+	for relic_id: StringName in run.relics:
+		var relic: RelicData = db.relic(relic_id)
+		assert(relic != null, "run has an unknown relic: %s" % relic_id)
+		ctx.relics.append(relic)
 	ctx.due = run.due.duplicate()
 	ctx.cat_hp = run.hp
 	ctx.cat_max_hp = run.max_hp

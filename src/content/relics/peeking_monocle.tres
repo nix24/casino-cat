@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="RelicData" format=3]
+
+[ext_resource type="Script" uid="uid://djwp6uy1t41k7" path="res://src/data/relic_data.gd" id="1_data"]
+[ext_resource type="Script" uid="uid://cxhpky0uq84gs" path="res://src/data/hook_data.gd" id="2_hook"]
+
+[sub_resource type="Resource" id="HookData_peeking_monocle_0"]
+script = ExtResource("2_hook")
+trigger = 6
+op = 13
+amount = 1
+family = &"cups"
+
+[resource]
+script = ExtResource("1_data")
+id = &"peeking_monocle"
+display_name = "Peeking Monocle"
+rarity = 0
+build_tag = &"card_counter"
+description = "The first Peek each battle is free."
+flavor = "Monocle on. Nothing hides from me."
+hooks = Array[ExtResource("2_hook")]([SubResource("HookData_peeking_monocle_0")])

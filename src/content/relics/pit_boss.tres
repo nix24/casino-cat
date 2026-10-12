@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="RelicData" format=3]
+
+[ext_resource type="Script" uid="uid://djwp6uy1t41k7" path="res://src/data/relic_data.gd" id="1_data"]
+[ext_resource type="Script" uid="uid://cxhpky0uq84gs" path="res://src/data/hook_data.gd" id="2_hook"]
+
+[sub_resource type="Resource" id="HookData_pit_boss_0"]
+script = ExtResource("2_hook")
+trigger = 1
+op = 17
+amount = 1
+
+[resource]
+script = ExtResource("1_data")
+id = &"pit_boss"
+display_name = "Pit Boss"
+rarity = 0
+build_tag = &"the_house"
+description = "The repeat penalty starts one use later."
+flavor = "I'm watching the repeats, sweetheart."
+hooks = Array[ExtResource("2_hook")]([SubResource("HookData_pit_boss_0")])

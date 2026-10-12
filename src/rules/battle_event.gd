@@ -14,6 +14,7 @@ extends RefCounted
 ## - STATUS_TICKED, STATUS_EXPIRED: actor is the status owner.
 ## - BACKFIRE: amount is the HP lost (shield does not apply), value_after the cat's HP after it.
 ## - DUE_CHANGED: reason is the gamble family, amount the new pip count.
+## - RELIC_TRIGGERED: reason is the relic id (T013).
 ## - REROLLS_CHANGED: amount is the rerolls left. Gamble detail lives in `gamble` (T002).
 
 enum Kind {
@@ -42,6 +43,7 @@ enum Kind {
 	BACKFIRE,
 	DUE_CHANGED,
 	REROLLS_CHANGED,
+	RELIC_TRIGGERED,
 }
 enum Actor { CAT, ENEMY }
 

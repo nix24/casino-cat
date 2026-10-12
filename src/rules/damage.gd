@@ -14,13 +14,15 @@ static func round_half_up(raw: float) -> int:
 	return rounded
 
 
-## Multiplier for the Nth basic use in a row. The count is capped at 4 in the tuning table.
-static func repeat_multiplier(repeat_count: int, tuning: TuningData) -> float:
+## Multiplier for the Nth basic use in a row. [param shift] (Pit Boss) starts the penalty later.
+static func repeat_multiplier(repeat_count: int, tuning: TuningData, shift: int = 0) -> float:
 	assert(repeat_count >= 1, "repeat_count starts at 1 for the first use")
-	return tuning.repeat_penalty[mini(repeat_count, 4) - 1]
+	var last: int = tuning.repeat_penalty.size() - 1
+	return tuning.repeat_penalty[clampi(repeat_count - 1 - shift, 0, last)]
 
 
 ## Final damage for one hit. Each hit is rounded on its own, so three hits of 4.5 deal 15.
+## [param move_mult] is the product of modifier and relic multipliers (Quick Draw).
 static func hit_amount(
 	base: int,
 	flat: int,
@@ -28,8 +30,9 @@ static func hit_amount(
 	repeat_mult: float,
 	attacker_weak: bool,
 	defender_exposed: bool,
+	move_mult: float = 1.0,
 ) -> int:
-	var raw: float = float(base + flat) * triangle * repeat_mult
+	var raw: float = float(base + flat) * move_mult * triangle * repeat_mult
 	if attacker_weak:
 		raw *= WEAK_MULTIPLIER
 	if defender_exposed:

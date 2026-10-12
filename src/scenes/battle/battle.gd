@@ -289,6 +289,8 @@ func _on_event_played(event: BattleEvent, seconds: float) -> void:
 		BattleEvent.Kind.SUIT_SHIFTED:
 			_cat_panel.set_suit(event.suit_to)
 			_cat_token.color = Strings.suit_color(event.suit_to)
+		BattleEvent.Kind.RELIC_TRIGGERED:
+			_action_label.text = _relic_name(event.reason)
 		BattleEvent.Kind.DUE_CHANGED:
 			_due_label.text = Strings.due_text(event.amount, _ctx.tuning.due_pips_max)
 		BattleEvent.Kind.BATTLE_WON, BattleEvent.Kind.BATTLE_LOST:
@@ -311,6 +313,14 @@ func _on_gamble_event(event: BattleEvent) -> void:
 			_dice_overlay.set_rerolls(event.amount)
 		BattleEvent.Kind.GAMBLE_RESOLVED:
 			_dice_overlay.show_result("%s → %d" % [event.gamble.tier, event.gamble.payout])
+
+
+## The relic's display name for a RELIC_TRIGGERED line, or its id if the context lacks it.
+func _relic_name(relic_id: StringName) -> String:
+	for relic: RelicData in _ctx.relics:
+		if relic.id == relic_id:
+			return relic.display_name
+	return String(relic_id)
 
 
 func _show_move_used(event: BattleEvent) -> void:

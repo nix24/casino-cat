@@ -138,8 +138,14 @@ static func _move_from(entry: Dictionary, context: String) -> MoveInstance:
 	var move := MoveInstance.new()
 	move.move_id = StringName(reader.string_at("move_id"))
 	move.modifier_ids = reader.ids_at("modifier_ids")
+	# Optional: saves written before T013 have no Re-suited suit.
+	if entry.has("suit_override"):
+		move.suit_override = reader.int_at("suit_override")
 	if not reader.ok():
 		reader.warn()
+		return null
+	if move.suit_override < -1 or move.suit_override >= Suit.Type.size():
+		push_warning("%s: suit_override: out of range" % context)
 		return null
 	return move
 
@@ -150,6 +156,7 @@ static func _moves_to_dicts(moves: Array[MoveInstance]) -> Array[Dictionary]:
 		var entry := {
 			"move_id": String(move.move_id),
 			"modifier_ids": SaveReader.plain_ids(move.modifier_ids),
+			"suit_override": move.suit_override,
 		}
 		plain.append(entry)
 	return plain

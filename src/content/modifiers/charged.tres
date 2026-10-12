@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ModifierData" format=3]
+
+[ext_resource type="Script" uid="uid://ctsj3wqpa8d0g" path="res://src/data/modifier_data.gd" id="1_data"]
+[ext_resource type="Script" uid="uid://cxhpky0uq84gs" path="res://src/data/hook_data.gd" id="2_hook"]
+
+[sub_resource type="Resource" id="HookData_charged_0"]
+script = ExtResource("2_hook")
+trigger = 3
+op = 3
+amount = 8
+
+[resource]
+script = ExtResource("1_data")
+id = &"charged"
+display_name = "Charged"
+fit = 0
+description = "Gain 8 MP on use."
+hooks = Array[ExtResource("2_hook")]([SubResource("HookData_charged_0")])

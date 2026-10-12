@@ -3,9 +3,19 @@ extends RefCounted
 ## Moves a run between map nodes (arch §5 state machine). Pure: the caller passes the content
 ## and the right RNG stream, and Game swaps scenes and saves.
 
+## Why attach_modifier refused, or OK (D3).
+enum AttachResult {
+	OK, NO_SUCH_MOVE, UNKNOWN_MODIFIER, DOES_NOT_FIT, ALREADY_ATTACHED, SLOTS_FULL, NEEDS_SUIT
+}
+
 ## The first battle of every run comes from this pool's enemies (PRD §9.2): act 1, row 1.
 const FIRST_BATTLE_ACT: int = 1
 const FIRST_BATTLE_ROW: int = 1
+## Modifier slots per move (PRD §8.1).
+const MODIFIER_SLOTS: int = 2
+## Suits Re-suited can choose (PRD §8.1: ♠/♥/♦; utility ♣ is not offered).
+const RE_SUIT_CHOICES: Array[Suit.Type] = [Suit.Type.SPADES, Suit.Type.HEARTS, Suit.Type.DIAMONDS]
+const RE_SUITED_ID: StringName = &"re_suited"
 
 
 ## Where entering a node leads: the screen state, the enemy to fight (empty when none), and the
@@ -204,6 +214,75 @@ static func equip_from_bag(run: RunState, bag_index: int, tuning: TuningData) ->
 	return true
 
 
+## Adds [param relic] to the run (no duplicates, PRD §8.2) and applies its RUN_START hooks once:
+## max HP gains raise current HP by the same amount (D16). False when already owned.
+static func gain_relic(run: RunState, relic: RelicData) -> bool:
+	if run.relics.has(relic.id):
+		return false
+	run.relics.append(relic.id)
+	for hook: HookData in relic.hooks:
+		if hook.trigger == HookData.Trigger.RUN_START and hook.op == HookData.Op.ADD_MAX_HP:
+			run.max_hp += hook.amount
+			run.hp += hook.amount
+	return true
+
+
+## Attaches [param modifier_id] to a move. [param move_index] counts the equipped row first, then
+## the bag. Re-suited needs [param suit_choice] (♠/♥/♦). [param replace_slot] overwrites that
+## modifier slot (PRD §8.1: the old one is lost); otherwise a free slot is used (D3).
+static func attach_modifier(
+	run: RunState,
+	move_index: int,
+	modifier_id: StringName,
+	db: ContentDb,
+	suit_choice: int = -1,
+	replace_slot: int = -1
+) -> AttachResult:
+	var instance: MoveInstance = _owned_move_at(run, move_index)
+	if instance == null:
+		return AttachResult.NO_SUCH_MOVE
+	var modifier: ModifierData = db.modifier(modifier_id)
+	if modifier == null:
+		return AttachResult.UNKNOWN_MODIFIER
+	if not fits(modifier, db.move(instance.move_id)):
+		return AttachResult.DOES_NOT_FIT
+	if instance.modifier_ids.has(modifier_id):
+		return AttachResult.ALREADY_ATTACHED
+	var is_replacing: bool = replace_slot >= 0 and replace_slot < instance.modifier_ids.size()
+	if not is_replacing and instance.modifier_ids.size() >= MODIFIER_SLOTS:
+		return AttachResult.SLOTS_FULL
+	if modifier_id == RE_SUITED_ID and not RE_SUIT_CHOICES.has(suit_choice):
+		return AttachResult.NEEDS_SUIT
+	if is_replacing:
+		if instance.modifier_ids[replace_slot] == RE_SUITED_ID:
+			instance.suit_override = -1
+		instance.modifier_ids[replace_slot] = modifier_id
+	else:
+		instance.modifier_ids.append(modifier_id)
+	if modifier_id == RE_SUITED_ID:
+		instance.suit_override = suit_choice
+	return AttachResult.OK
+
+
+## Whether [param modifier] fits [param move] (PRD §8.1 "Fits").
+static func fits(modifier: ModifierData, move: MoveData) -> bool:
+	var family: StringName = move.gamble.family if move.gamble != null else &""
+	match modifier.fit:
+		ModifierData.Fit.BASIC:
+			return move.category == MoveData.Category.BASIC
+		ModifierData.Fit.ANY:
+			return true
+		ModifierData.Fit.GAMBLE:
+			return move.category == MoveData.Category.GAMBLE
+		ModifierData.Fit.DICE_NOT_SNAKE_EYES:
+			return family == &"dice" and move.id != &"snake_eyes"
+		ModifierData.Fit.COIN:
+			return family == &"coin"
+		ModifierData.Fit.CARDS:
+			return family == &"cards"
+	return false
+
+
 ## Ids of every move the cat owns, equipped or in the bag.
 static func owned_ids(run: RunState) -> Array[StringName]:
 	var ids: Array[StringName] = []
@@ -230,3 +309,13 @@ static func _pick_enemy(pool: Array[EnemyData], rng: SeededRng) -> StringName:
 
 static func _in_range(moves: Array[MoveInstance], index: int) -> bool:
 	return index >= 0 and index < moves.size()
+
+
+## The owned move at [param index] counting equipped then bag, or null.
+static func _owned_move_at(run: RunState, index: int) -> MoveInstance:
+	if index >= 0 and index < run.equipped.size():
+		return run.equipped[index]
+	var bag_index: int = index - run.equipped.size()
+	if bag_index >= 0 and bag_index < run.bag.size():
+		return run.bag[bag_index]
+	return null

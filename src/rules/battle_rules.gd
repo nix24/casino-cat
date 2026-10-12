@@ -7,12 +7,14 @@ extends RefCounted
 
 ## Regen heals this much at the end of each turn (content-registry, status regen).
 const REGEN_HEAL: int = 3
+## A discounted move never costs less than this (Cheap, PRD §8.1). Free moves stay free.
+const MIN_DISCOUNTED_MP_COST: int = 5
 
 
 ## Opens a battle against [param enemy]. The cat starts at the run's HP (full when [param ctx]
 ## carries none) and CLUBS, with the loadout from [param ctx]. Returns the state and the
-## BATTLE_STARTED, TURN_STARTED, INTENT_SHOWN events. [param _rng] is unused until a battle rule
-## needs randomness.
+## BATTLE_STARTED, BATTLE_START relic events, TURN_STARTED, INTENT_SHOWN events. [param _rng] is
+## unused until a battle rule needs randomness.
 static func start(enemy: EnemyData, ctx: BattleContext, _rng: SeededRng) -> BattleStart:
 	assert(not enemy.pattern.is_empty(), "every enemy needs at least one intent")
 	var state := BattleState.new()
@@ -31,6 +33,7 @@ static func start(enemy: EnemyData, ctx: BattleContext, _rng: SeededRng) -> Batt
 	var opening := BattleStart.new()
 	opening.state = state
 	opening.events.append(BattleEvent.new(BattleEvent.Kind.BATTLE_STARTED))
+	_battle_start_hooks(state, ctx, opening.events)
 	opening.events.append(_turn_started_event(state.turn))
 	opening.events.append(_intent_shown_event(state.next_intent))
 	return opening
@@ -52,16 +55,27 @@ static func apply(
 		return _gamble_choice(state, action.gamble_choice, ctx, rngs.gamble)
 
 	var move: MoveData = _move_for_slot(state, action.slot, ctx)
+	var instance: MoveInstance = state.equipped[action.slot]
+	state.acting_slot = action.slot
 	var move_event := BattleEvent.new(BattleEvent.Kind.MOVE_USED)
 	move_event.move_id = move.id
 	events.append(move_event)
-	_change_mp(state, ctx.tuning, BattleEvent.Actor.CAT, &"cost", -move.mp_cost, events)
+	var cost: int = _mp_cost(state, move, instance, ctx)
+	_change_mp(state, ctx.tuning, BattleEvent.Actor.CAT, &"cost", -cost, events)
+	if move.category == MoveData.Category.BASIC:
+		events.append_array(
+			(
+				Hooks
+				. collect(HookData.Trigger.BEFORE_MOVE, state, ctx, _move_context(move, instance))
+				. events
+			)
+		)
 
 	state.repeat_count = _next_repeat_count(state, move)
 	state.last_move_id = move.id
 	if move.category == MoveData.Category.GAMBLE:
 		return _open_gamble(state, move, ctx, rngs.gamble, events)
-	_resolve_move(state, move, ctx.tuning, events)
+	_resolve_move(state, move, ctx, events)
 	return _resolve_turn(state, move, ctx, events)
 
 
@@ -70,19 +84,20 @@ static func apply(
 static func preview_move(state: BattleState, slot: int, ctx: BattleContext) -> MovePreview:
 	assert(slot >= 0 and slot < state.equipped.size(), "slot %d is not equipped" % slot)
 	var move: MoveData = _move_for_slot(state, slot, ctx)
+	var instance: MoveInstance = state.equipped[slot]
 	var preview := MovePreview.new()
-	preview.mp_cost = move.mp_cost
-	preview.affordable = move.mp_cost <= state.mp
-	preview.missing_mp = maxi(move.mp_cost - state.mp, 0)
+	preview.mp_cost = _mp_cost(state, move, instance, ctx)
+	preview.affordable = preview.mp_cost <= state.mp
+	preview.missing_mp = maxi(preview.mp_cost - state.mp, 0)
 	if move.category == MoveData.Category.BASIC:
 		var repeat_count: int = _next_repeat_count(state, move)
 		preview.hits = move.hits
-		preview.triangle_mult = Suit.damage_multiplier(move.suit, state.enemy.suit)
-		preview.damage = _player_hit_amount(state, move, repeat_count, ctx.tuning) * move.hits
+		preview.triangle_mult = Suit.damage_multiplier(suit_of(move, instance), state.enemy.suit)
+		preview.damage = _player_hit_amount(state, move, instance, repeat_count, ctx) * move.hits
 	elif move.category == MoveData.Category.GAMBLE:
 		preview.odds = GambleRules.preview(move.gamble, state, ctx)
 	if state.next_intent.kind == IntentData.Kind.ATTACK:
-		var suit_after: Suit.Type = _suit_after_move(state, move, ctx.tuning)
+		var suit_after: Suit.Type = _suit_after_move(state, move, instance, ctx.tuning)
 		preview.incoming_mult = Suit.damage_multiplier(state.enemy.suit, suit_after)
 	return preview
 
@@ -106,7 +121,8 @@ static func _rejection_reason(
 		return &"gamble_pending"
 	if action.slot < 0 or action.slot >= state.equipped.size():
 		return &"invalid_slot"
-	if _move_for_slot(state, action.slot, ctx).mp_cost > state.mp:
+	var move: MoveData = _move_for_slot(state, action.slot, ctx)
+	if _mp_cost(state, move, state.equipped[action.slot], ctx) > state.mp:
 		return &"not_affordable"
 	return &""
 
@@ -126,10 +142,12 @@ static func _next_repeat_count(state: BattleState, move: MoveData) -> int:
 
 ## Basic moves hit for their damage, one hit per `hits`. Then the effects run in order.
 static func _resolve_move(
-	state: BattleState, move: MoveData, tuning: TuningData, events: Array[BattleEvent]
+	state: BattleState, move: MoveData, ctx: BattleContext, events: Array[BattleEvent]
 ) -> void:
+	var tuning: TuningData = ctx.tuning
 	if move.category == MoveData.Category.BASIC:
-		var amount: int = _player_hit_amount(state, move, state.repeat_count, tuning)
+		var instance: MoveInstance = state.equipped[state.acting_slot]
+		var amount: int = _player_hit_amount(state, move, instance, state.repeat_count, ctx)
 		for _hit: int in move.hits:
 			_deal_damage(state.enemy, BattleEvent.Actor.CAT, amount, events)
 			if state.enemy.hp <= 0:
@@ -158,29 +176,117 @@ static func _resolve_effect(
 			assert(false, "effect kind %d is not implemented in T001" % effect.kind)
 
 
-## Per-hit damage for a basic move of the cat, using the repeat count for this use.
+## Per-hit damage for a basic move of the cat, using the repeat count for this use. BEFORE_MOVE
+## hooks add flat damage and multipliers before the triangle and repeat penalty (arch §4).
 static func _player_hit_amount(
-	state: BattleState, move: MoveData, repeat_count: int, tuning: TuningData
+	state: BattleState,
+	move: MoveData,
+	instance: MoveInstance,
+	repeat_count: int,
+	ctx: BattleContext
 ) -> int:
+	var hooks: HookResult = Hooks.collect(
+		HookData.Trigger.BEFORE_MOVE, state, ctx, _move_context(move, instance)
+	)
 	return (
 		Damage
 		. hit_amount(
 			move.base_damage,
-			state.cat.flat_damage_bonus,
-			Suit.damage_multiplier(move.suit, state.enemy.suit),
-			Damage.repeat_multiplier(repeat_count, tuning),
+			state.cat.flat_damage_bonus + hooks.flat_damage,
+			Suit.damage_multiplier(suit_of(move, instance), state.enemy.suit),
+			Damage.repeat_multiplier(repeat_count, ctx.tuning, state.repeat_shift),
 			state.cat.statuses.has(&"weak"),
 			state.enemy.statuses.has(&"exposed"),
+			hooks.damage_mult_pct / 100.0,
 		)
 	)
 
 
+## The suit [param move] attacks with: Re-suited's choice when attached, else its own (PRD §8.1).
+static func suit_of(move: MoveData, instance: MoveInstance) -> Suit.Type:
+	if instance != null and instance.suit_override >= 0:
+		return instance.suit_override as Suit.Type
+	return move.suit
+
+
+## [param cost] after a discount [param delta] (negative). Never below MIN_DISCOUNTED_MP_COST,
+## and a free move stays free.
+static func discounted_cost(cost: int, delta: int) -> int:
+	if cost <= 0 or delta == 0:
+		return cost
+	return maxi(cost + delta, mini(cost, MIN_DISCOUNTED_MP_COST))
+
+
 ## Type-shift (PRD §4.3). A move of another suit makes that suit the cat's suit. With the
 ## shift disabled the cat stays CLUBS.
-static func _suit_after_move(state: BattleState, move: MoveData, tuning: TuningData) -> Suit.Type:
+static func _suit_after_move(
+	state: BattleState, move: MoveData, instance: MoveInstance, tuning: TuningData
+) -> Suit.Type:
 	if tuning.type_shift_enabled:
-		return move.suit
+		return suit_of(move, instance)
 	return state.cat.suit
+
+
+## MP the move costs this turn, after modifiers such as Cheap.
+static func _mp_cost(
+	state: BattleState, move: MoveData, instance: MoveInstance, ctx: BattleContext
+) -> int:
+	var hooks: HookResult = Hooks.collect(
+		HookData.Trigger.BEFORE_MOVE, state, ctx, _move_context(move, instance)
+	)
+	return discounted_cost(move.mp_cost, hooks.mp_cost_delta)
+
+
+static func _move_context(move: MoveData, instance: MoveInstance) -> HookContext:
+	var hook_ctx := HookContext.new()
+	hook_ctx.move = move
+	hook_ctx.move_instance = instance
+	if move.gamble != null:
+		hook_ctx.family = move.gamble.family
+	return hook_ctx
+
+
+## BATTLE_START hooks (T013): relic events, then extra rerolls, then the opening shield.
+static func _battle_start_hooks(
+	state: BattleState, ctx: BattleContext, events: Array[BattleEvent]
+) -> void:
+	var hooks: HookResult = Hooks.collect(
+		HookData.Trigger.BATTLE_START, state, ctx, HookContext.new()
+	)
+	events.append_array(hooks.events)
+	state.repeat_shift = hooks.repeat_shift
+	if hooks.rerolls > 0:
+		state.rerolls += hooks.rerolls
+		var rerolls_changed := BattleEvent.new(BattleEvent.Kind.REROLLS_CHANGED)
+		rerolls_changed.amount = state.rerolls
+		events.append(rerolls_changed)
+	if hooks.shield > 0:
+		_gain_shield(state.cat, BattleEvent.Actor.CAT, hooks.shield, ctx.tuning, events)
+
+
+## AFTER_MOVE and ON_DAMAGE_DEALT hooks for the move that just resolved. Shield and heal land now;
+## the returned MP joins the move's own MP at the end of the turn (PRD §7).
+static func _after_move_hooks(
+	state: BattleState, move: MoveData, ctx: BattleContext, events: Array[BattleEvent]
+) -> int:
+	var instance: MoveInstance = state.equipped[state.acting_slot]
+	var hook_ctx: HookContext = _move_context(move, instance)
+	var after: HookResult = Hooks.collect(HookData.Trigger.AFTER_MOVE, state, ctx, hook_ctx)
+	events.append_array(after.events)
+	if after.shield > 0:
+		_gain_shield(state.cat, BattleEvent.Actor.CAT, after.shield, ctx.tuning, events)
+	for event: BattleEvent in events:
+		if event.kind == BattleEvent.Kind.DAMAGE_DEALT and event.actor == BattleEvent.Actor.CAT:
+			hook_ctx.damage += event.amount - event.absorbed
+	if hook_ctx.damage > 0:
+		var dealt: HookResult = Hooks.collect(
+			HookData.Trigger.ON_DAMAGE_DEALT, state, ctx, hook_ctx
+		)
+		events.append_array(dealt.events)
+		var heal: int = floori(hook_ctx.damage * dealt.heal / 100.0 + 0.5)
+		if heal > 0:
+			_heal(state.cat, BattleEvent.Actor.CAT, heal, &"", events)
+	return after.gain_mp
 
 
 # --- turn tail and gambles ---------------------------------------------------------------------
@@ -191,7 +297,9 @@ static func _suit_after_move(state: BattleState, move: MoveData, tuning: TuningD
 static func _resolve_turn(
 	state: BattleState, move: MoveData, ctx: BattleContext, events: Array[BattleEvent]
 ) -> Array[BattleEvent]:
-	var suit_after: Suit.Type = _suit_after_move(state, move, ctx.tuning)
+	var hook_mp: int = _after_move_hooks(state, move, ctx, events)
+	var instance: MoveInstance = state.equipped[state.acting_slot]
+	var suit_after: Suit.Type = _suit_after_move(state, move, instance, ctx.tuning)
 	if suit_after != state.cat.suit:
 		events.append(_suit_shifted_event(state.cat.suit, suit_after))
 		state.cat.suit = suit_after
@@ -205,7 +313,7 @@ static func _resolve_turn(
 	_enemy_acts(state, ctx.tuning, events)
 	if state.cat.hp <= 0:
 		return _finish(state, BattleState.Outcome.LOST, BattleEvent.Kind.BATTLE_LOST, events)
-	_end_turn(state, move, ctx.tuning, events)
+	_end_turn(state, move, ctx.tuning, hook_mp, events)
 	return events
 
 
@@ -227,6 +335,11 @@ static func _open_gamble(
 	ctx.forced.clear()
 	state.pending = session
 
+	var preview_ctx := HookContext.new()
+	preview_ctx.family = session.family
+	events.append_array(
+		Hooks.collect(HookData.Trigger.GAMBLE_PREVIEW, state, ctx, preview_ctx).events
+	)
 	var started := BattleEvent.new(BattleEvent.Kind.GAMBLE_STARTED)
 	started.gamble = GambleEventData.new()
 	started.gamble.odds = session.odds
@@ -354,7 +467,7 @@ static func _enemy_attacks(
 ## Regen, then status ticks, then MP (R6). Heal comes before the tick, so Regen 3 heals exactly
 ## three times. MP is charged last, from this turn's hits and move effects.
 static func _end_turn(
-	state: BattleState, move: MoveData, tuning: TuningData, events: Array[BattleEvent]
+	state: BattleState, move: MoveData, tuning: TuningData, hook_mp: int, events: Array[BattleEvent]
 ) -> void:
 	_regen(state.cat, BattleEvent.Actor.CAT, events)
 	_regen(state.enemy, BattleEvent.Actor.ENEMY, events)
@@ -368,7 +481,7 @@ static func _end_turn(
 	var taken: int = _mp_from_hits(events, BattleEvent.Actor.ENEMY, tuning.mp_per_damage_taken)
 	taken += _mp_from_backfire(events, tuning.mp_per_damage_taken)
 	_change_mp(state, tuning, BattleEvent.Actor.CAT, &"taken", taken, events)
-	_change_mp(state, tuning, BattleEvent.Actor.CAT, &"move", _move_mp_gain(move), events)
+	_change_mp(state, tuning, BattleEvent.Actor.CAT, &"move", _move_mp_gain(move) + hook_mp, events)
 
 	state.intent_index = (state.intent_index + 1) % state.enemy_data.pattern.size()
 	state.next_intent = state.enemy_data.pattern[state.intent_index]

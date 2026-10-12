@@ -20,5 +20,9 @@ var next_intent: IntentData
 var outcome: Outcome = Outcome.ONGOING
 ## Rerolls left for dice gambles this battle (PRD §6.1). Set from tuning at battle start.
 var rerolls: int = 0
+## Uses the repeat penalty starts later, from relics such as Pit Boss (PRD §4.4, T013).
+var repeat_shift: int = 0
+## Loadout slot of the move being resolved, so a gamble's resolution finds the cat's copy.
+var acting_slot: int = 0
 ## The gamble waiting for a player choice, or null. While set, only GAMBLE_CHOICE is accepted.
 var pending: GambleSession

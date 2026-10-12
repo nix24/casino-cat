@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ModifierData" format=3]
+
+[ext_resource type="Script" uid="uid://ctsj3wqpa8d0g" path="res://src/data/modifier_data.gd" id="1_data"]
+[ext_resource type="Script" uid="uid://cxhpky0uq84gs" path="res://src/data/hook_data.gd" id="2_hook"]
+
+[sub_resource type="Resource" id="HookData_re_suited_0"]
+script = ExtResource("2_hook")
+trigger = 2
+op = 21
+amount = 0
+
+[resource]
+script = ExtResource("1_data")
+id = &"re_suited"
+display_name = "Re-suited"
+fit = 0
+description = "Suit becomes the one you chose on attach."
+hooks = Array[ExtResource("2_hook")]([SubResource("HookData_re_suited_0")])

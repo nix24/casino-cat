@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ModifierData" format=3]
+
+[ext_resource type="Script" uid="uid://ctsj3wqpa8d0g" path="res://src/data/modifier_data.gd" id="1_data"]
+[ext_resource type="Script" uid="uid://cxhpky0uq84gs" path="res://src/data/hook_data.gd" id="2_hook"]
+
+[sub_resource type="Resource" id="HookData_quick_draw_0"]
+script = ExtResource("2_hook")
+trigger = 2
+op = 5
+amount = 150
+condition = 1
+
+[resource]
+script = ExtResource("1_data")
+id = &"quick_draw"
+display_name = "Quick Draw"
+fit = 1
+description = "×1.5 damage on the battle's first turn."
+hooks = Array[ExtResource("2_hook")]([SubResource("HookData_quick_draw_0")])

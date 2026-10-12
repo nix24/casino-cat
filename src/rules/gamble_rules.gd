@@ -17,12 +17,15 @@ static func luck_chance(luck_points: int) -> float:
 	return clampf(float(luck_points) / 100.0, 0.0, PROBABILITY_CAP)
 
 
-## Luck for a gamble of [param family] right now (PRD §6.0 rule 6, gamble-math.md). Relic Luck and
-## House Edge join later. For now this is the Due term and Rattled.
+## Luck for a gamble of [param family] right now (PRD §6.0 rule 6, gamble-math.md): relic Luck from
+## GAMBLE_PREVIEW hooks (T013), the Due term, and Rattled. House Edge joins later.
 static func luck(family: StringName, state: BattleState, ctx: BattleContext) -> int:
 	var due_pips: int = ctx.due.get(family, 0)
 	var rattled: int = RATTLED_LUCK if state.cat.statuses.has(&"rattled") else 0
-	return ctx.luck_bonus + ctx.tuning.luck_per_pip * due_pips + rattled
+	var hook_ctx := HookContext.new()
+	hook_ctx.family = family
+	var relic_luck: int = Hooks.collect(HookData.Trigger.GAMBLE_PREVIEW, state, ctx, hook_ctx).luck
+	return ctx.luck_bonus + relic_luck + ctx.tuning.luck_per_pip * due_pips + rattled
 
 
 ## Payout multiplier from statuses: Weak on the cat lowers it, Exposed on the enemy raises it.
