@@ -55,14 +55,11 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed(&"ui_cancel"):
 		return
-	if _loadout.visible:
+	if _loadout.visible or not _picker.visible:
 		return
-	# Handled first: leaving swaps the scene, and this node has no viewport after that.
+	# Handled first so Esc closes only the picker; with none open it reaches the pause menu (D55).
 	get_viewport().set_input_as_handled()
-	if _picker.visible:
-		_close_picker()
-	else:
-		leave_requested.emit()
+	_close_picker()
 
 
 ## Shows [param stock] (a ShopRules stock) for [param run]. The scene edits both in place through

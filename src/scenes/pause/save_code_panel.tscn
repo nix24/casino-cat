@@ -1,0 +1,57 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/scenes/pause/save_code_panel.gd" id="1_panel"]
+
+[node name="SaveCodePanel" type="PanelContainer"]
+script = ExtResource("1_panel")
+
+[node name="Content" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="ExportHint" type="Label" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="ExportRow" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+
+[node name="CodeField" type="LineEdit" parent="Content/ExportRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+editable = false
+
+[node name="Copy" type="Button" parent="Content/ExportRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="CopyStatus" type="Label" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="Import" type="VBoxContainer" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ImportHint" type="Label" parent="Content/Import"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="ImportBox" type="LineEdit" parent="Content/Import"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Load" type="Button" parent="Content/Import"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="LoadStatus" type="Label" parent="Content/Import"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+autowrap_mode = 3

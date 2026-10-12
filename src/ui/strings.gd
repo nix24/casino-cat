@@ -168,6 +168,24 @@ const EFFECT_BATTLE_FORMAT: String = "fight %s"
 const EFFECT_NEXT_MP_FORMAT: String = "+%d MP next battle"
 const EFFECT_NOTHING: String = "nothing"
 
+const PAUSE_TITLE: String = "Paused"
+const PAUSE_RESUME: String = "Resume"
+const PAUSE_SETTINGS: String = "Settings"
+const PAUSE_SAVE_QUIT: String = "Save & Quit"
+const PAUSE_ABANDON: String = "Abandon run"
+const ABANDON_CONFIRM: String = "Fold this run? It goes in the history as a loss."
+const ABANDON_YES: String = "Fold"
+const ABANDON_NO: String = "Keep playing"
+const SAVE_CODE_BUTTON: String = "Save code"
+const SAVE_CODE_EXPORT_HINT: String = "Your run and progress in one line. Keep it somewhere safe."
+const SAVE_CODE_COPY: String = "Copy"
+const SAVE_CODE_COPIED: String = "Copied."
+const SAVE_CODE_IMPORT_HINT: String = "Paste a save code. It replaces the saves on this device."
+const SAVE_CODE_LOAD: String = "Load code"
+const SAVE_CODE_LOADED: String = "Loaded. Your run is waiting on the title."
+const SAVE_CODE_BAD: String = "That code doesn't add up. Copy the whole line and try again."
+const SAVE_CODE_TOO_NEW: String = "That code is from a newer version of the game."
+
 
 ## Glyph for [param suit]: ♠ ♥ ♦ ♣.
 static func suit_glyph(suit: Suit.Type) -> String:

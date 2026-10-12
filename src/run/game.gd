@@ -18,6 +18,10 @@ const EVENT_SCENE: String = "res://src/scenes/event/event.tscn"
 const BOSS_REWARD_SCENE: String = "res://src/scenes/reward/boss_reward.tscn"
 const TREASURE_SCENE: String = "res://src/scenes/treasure/treasure.tscn"
 const SUMMARY_SCENE: String = "res://src/scenes/summary/summary.tscn"
+const PAUSE_MENU_SCENE: String = "res://src/scenes/pause/pause_menu.tscn"
+const SETTINGS_SCENE: String = "res://src/scenes/settings/settings_stub.tscn"
+## Above the run scenes, below the debug layer (100).
+const PAUSE_LAYER: int = 90
 const DEFAULT_ENEMY_ID: StringName = &"sewer_rat"
 
 var run: RunState
@@ -35,13 +39,27 @@ var _battle_entry: Dictionary = {}
 var _battle: BattleScene
 ## Ticks (ms) up to which run.stats.duration_s has counted play time.
 var _clock_ms: int = 0
+## Lives on its own layer so it survives scene changes (D55). Hidden unless the game is paused.
+var _pause_menu: PauseMenu
+## The settings stub opened from the pause menu, or null.
+var _settings_overlay: SettingsStub
+## What had focus when the pause opened; Resume gives it back so keys and controllers still work.
+var _focus_before_pause: Control
 
 
 func _ready() -> void:
 	db = ContentDb.load_all()
 	_load_meta()
+	_add_pause_layer()
 	if OS.is_debug_build():
 		_add_debug_layer()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if run == null or _pause_menu.visible or not event.is_action_pressed(&"pause"):
+		return
+	get_viewport().set_input_as_handled()
+	open_pause()
 
 
 ## Starts a run from [param run_seed], or a fresh seed when it is empty, and opens the map.
@@ -111,6 +129,65 @@ func end_run(is_won: bool) -> Dictionary:
 	run = null
 	run_changed.emit()
 	return entry
+
+
+## Abandons the run (D32, D55): it ends as a loss, goes in the history, and the summary opens.
+func abandon_run() -> void:
+	close_pause()
+	_show_summary(end_run(false))
+
+
+## Saves the run and returns to the title (D55). In battle the save is the node-start state with
+## used pouch items gone (D34, arch §6): the battle writes hp and RNG back only when it ends.
+func save_and_quit() -> void:
+	close_pause()
+	save_now()
+	run = null
+	_battle = null
+	run_changed.emit()
+	_change_scene(_load_scene(TITLE_SCENE))
+
+
+## Pauses the tree and opens the pause menu. Does nothing without a run.
+func open_pause() -> void:
+	if run == null:
+		return
+	_focus_before_pause = get_viewport().gui_get_focus_owner()
+	get_tree().paused = true
+	_pause_menu.open()
+
+
+## Closes the pause menu and any settings opened from it, then resumes the tree.
+func close_pause() -> void:
+	_close_settings_overlay()
+	_pause_menu.close()
+	get_tree().paused = false
+	if is_instance_valid(_focus_before_pause) and _focus_before_pause.is_visible_in_tree():
+		_focus_before_pause.grab_focus()
+	_focus_before_pause = null
+
+
+## The run and meta saves as one save code (PRD §17.4). Works with or without a run.
+func save_code() -> String:
+	return SaveCode.export_code(run.to_dict() if run != null else {}, meta.to_dict())
+
+
+## Replaces both saves with the ones in [param code]. Refused during a run. On success meta is
+## reloaded and the title offers Continue when the code carried a run.
+func import_save_code(code: String) -> SaveCode.Error:
+	if run != null:
+		push_warning("import_save_code called during a run; refused")
+		return SaveCode.Error.BAD_CODE
+	var imported: SaveCode.Imported = SaveCode.import_code(code)
+	if imported.error != SaveCode.Error.NONE:
+		return imported.error
+	save_store.write_json(META_FILE, imported.meta)
+	_load_meta()
+	if imported.run.is_empty():
+		save_store.delete_file(RUN_FILE)
+	else:
+		save_store.write_json(RUN_FILE, imported.run)
+	return SaveCode.Error.NONE
 
 
 ## Writes [member run] to run.json. A failed write is kept in save_store.last_result.
@@ -482,6 +559,42 @@ func _add_debug_layer() -> void:
 	add_child(layer)
 	layer.add_child((load("res://src/debug/debug_overlay.tscn") as PackedScene).instantiate())
 	layer.add_child((load("res://src/debug/dev_console.tscn") as PackedScene).instantiate())
+
+
+## The pause menu sits on its own layer under Game, like the debug layer, and keeps running while
+## the tree is paused (D55).
+func _add_pause_layer() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = PAUSE_LAYER
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(layer)
+	_pause_menu = _load_scene(PAUSE_MENU_SCENE) as PauseMenu
+	_pause_menu.visible = false
+	_pause_menu.resume_requested.connect(close_pause)
+	_pause_menu.settings_requested.connect(_open_settings_overlay)
+	_pause_menu.save_quit_requested.connect(save_and_quit)
+	_pause_menu.abandon_confirmed.connect(abandon_run)
+	layer.add_child(_pause_menu)
+
+
+func _open_settings_overlay() -> void:
+	_settings_overlay = _load_scene(SETTINGS_SCENE) as SettingsStub
+	_settings_overlay.is_overlay = true
+	_settings_overlay.closed.connect(_on_settings_closed)
+	_pause_menu.visible = false
+	_pause_menu.get_parent().add_child(_settings_overlay)
+
+
+func _on_settings_closed() -> void:
+	_close_settings_overlay()
+	_pause_menu.open()
+
+
+func _close_settings_overlay() -> void:
+	if _settings_overlay == null:
+		return
+	_settings_overlay.queue_free()
+	_settings_overlay = null
 
 
 ## The run's streams at their saved states. Each caller writes them back with to_states().

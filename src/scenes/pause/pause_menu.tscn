@@ -1,0 +1,86 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/scenes/pause/pause_menu.gd" id="1_pause"]
+
+[sub_resource type="Theme" id="Theme_pause"]
+default_font_size = 10
+
+[node name="PauseMenu" type="Control"]
+process_mode = 3
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = SubResource("Theme_pause")
+script = ExtResource("1_pause")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.047, 0.055, 0.18, 0.8)
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Content" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Panel/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.965, 0.918, 0.698, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+
+[node name="Buttons" type="VBoxContainer" parent="Panel/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Resume" type="Button" parent="Panel/Content/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Settings" type="Button" parent="Panel/Content/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="SaveQuit" type="Button" parent="Panel/Content/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Abandon" type="Button" parent="Panel/Content/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Confirm" type="VBoxContainer" parent="Panel/Content"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="ConfirmText" type="Label" parent="Panel/Content/Confirm"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="ConfirmYes" type="Button" parent="Panel/Content/Confirm"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ConfirmNo" type="Button" parent="Panel/Content/Confirm"]
+unique_name_in_owner = true
+layout_mode = 2
