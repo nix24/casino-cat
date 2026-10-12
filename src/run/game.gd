@@ -8,7 +8,7 @@ signal run_changed
 
 const RUN_FILE: String = "run.json"
 const TITLE_SCENE: String = "res://src/scenes/title/title.tscn"
-const MAP_SCENE: String = "res://src/scenes/map/map_placeholder.tscn"
+const MAP_SCENE: String = "res://src/scenes/map/map.tscn"
 const BATTLE_SCENE: String = "res://src/scenes/battle/battle.tscn"
 const DEFAULT_ENEMY_ID: StringName = &"sewer_rat"
 
@@ -61,12 +61,12 @@ func goto(node_state: RunState.NodeState) -> void:
 	run.node_state = node_state
 	match node_state:
 		RunState.NodeState.MAP:
-			_change_scene(_load_scene(MAP_SCENE))
+			_enter_map()
 		RunState.NodeState.BATTLE:
 			_enter_battle()
 		_:
 			push_error("no scene for %s yet" % RunState.NodeState.keys()[node_state])
-			_change_scene(_load_scene(MAP_SCENE))
+			_enter_map()
 	save_now()
 	run_changed.emit()
 
@@ -101,6 +101,38 @@ func _start_run(run_seed: String) -> void:
 	run = RunState.start(seed_text, db.tuning())
 	save_now()
 	run_changed.emit()
+
+
+func _enter_map() -> void:
+	_ensure_map()
+	var map_scene: MapScene = _load_scene(MAP_SCENE) as MapScene
+	map_scene.show_map(run.map, run.position, run)
+	map_scene.node_chosen.connect(_on_node_chosen.bind(map_scene))
+	map_scene.coming_soon_closed.connect(goto.bind(RunState.NodeState.MAP))
+	_change_scene(map_scene)
+
+
+## Maps are made from the map stream on first arrival (PRD §3.1). T011 may move this into RunRules.
+func _ensure_map() -> void:
+	if run.map != null and run.map.act == run.act:
+		return
+	var rngs: RngSet = RngSet.for_seed(run.run_seed)
+	rngs.apply_states(run.rng_states)
+	run.map = MapGen.generate(run.act, db.tuning(), rngs.map)
+	run.rng_states = rngs.to_states()
+	run.position = MapNavigation.start_position()
+
+
+func _on_node_chosen(node: MapNode, map_scene: MapScene) -> void:
+	run.position = node.cell()
+	if node.type == MapNode.Type.BATTLE:
+		# T011 picks real enemies; until then every battle node fights the default one.
+		run.node_payload = {"enemy": DEFAULT_ENEMY_ID}
+		goto(RunState.NodeState.BATTLE)
+		return
+	# Decision D7 interim: the other node types have no screen yet, so say so and come back.
+	save_now()
+	map_scene.show_coming_soon(node.type)
 
 
 func _enter_battle() -> void:

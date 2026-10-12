@@ -1,0 +1,116 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/scenes/map/map.gd" id="1_map"]
+[ext_resource type="PackedScene" path="res://src/scenes/map/map_tooltip.tscn" id="2_tooltip"]
+
+[sub_resource type="Theme" id="Theme_map"]
+default_font_size = 10
+
+[node name="Map" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = SubResource("Theme_map")
+script = ExtResource("1_map")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.047, 0.055, 0.18, 1)
+
+[node name="Layout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TopBar" type="HBoxContainer" parent="Layout"]
+layout_mode = 2
+
+[node name="Hud" type="Label" parent="Layout/TopBar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.949, 0.906, 0.698, 1)
+
+[node name="SaveWarning" type="Label" parent="Layout/TopBar"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.62, 0.459, 0.482, 1)
+autowrap_mode = 3
+
+[node name="ToTitle" type="Button" parent="Layout/TopBar"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Scroll" type="ScrollContainer" parent="Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+follow_focus = true
+horizontal_scroll_mode = 0
+
+[node name="Centre" type="CenterContainer" parent="Layout/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Board" type="Control" parent="Layout/Scroll/Centre"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(512, 720)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="YouAreHere" type="Label" parent="Layout/Scroll/Centre/Board"]
+unique_name_in_owner = true
+layout_mode = 0
+theme_override_colors/font_color = Color(0.949, 0.906, 0.698, 1)
+mouse_filter = 2
+
+[node name="Legend" type="HBoxContainer" parent="Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Tooltip" parent="." instance=ExtResource("2_tooltip")]
+unique_name_in_owner = true
+top_level = true
+layout_mode = 0
+
+[node name="ComingSoon" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ComingSoonLayout" type="VBoxContainer" parent="ComingSoon"]
+layout_mode = 2
+
+[node name="ComingSoonText" type="Label" parent="ComingSoon/ComingSoonLayout"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="ComingSoonContinue" type="Button" parent="ComingSoon/ComingSoonLayout"]
+unique_name_in_owner = true
+layout_mode = 2
