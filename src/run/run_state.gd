@@ -30,8 +30,8 @@ var due: Dictionary[StringName, int] = {}
 var next_battle_mp_bonus: int = 0
 ## Raw state of each RNG stream, from RngSet.to_states().
 var rng_states: Dictionary[StringName, int] = {}
-## The map is a plain Dictionary until T009 adds MapData.
-var map: Dictionary = {}
+## The current act's map; null until the first map is generated (saved as {}).
+var map: MapData = null
 var node_state: NodeState = NodeState.MAP
 var node_payload: Dictionary = {}
 var action_log: Array[Dictionary] = []
@@ -71,7 +71,7 @@ func to_dict() -> Dictionary:
 		"due": SaveReader.plain_counts(due),
 		"next_battle_mp_bonus": next_battle_mp_bonus,
 		"rng_states": SaveReader.plain_counts(rng_states),
-		"map": map.duplicate(true),
+		"map": map.to_dict() if map != null else {},
 		"node_state": NodeState.keys()[node_state],
 		"node_payload": node_payload.duplicate(true),
 		"action_log": action_log.duplicate(true),
@@ -98,7 +98,7 @@ static func from_dict(d: Dictionary) -> RunState:
 	run.due = reader.counts_at("due")
 	run.next_battle_mp_bonus = reader.int_at("next_battle_mp_bonus")
 	run.rng_states = reader.counts_at("rng_states")
-	run.map = reader.dict_at("map")
+	var map_dict: Dictionary = reader.dict_at("map")
 	var node_state_name: String = reader.string_at("node_state")
 	run.node_payload = reader.dict_at("node_payload")
 	run.action_log = reader.dicts_at("action_log")
@@ -110,6 +110,10 @@ static func from_dict(d: Dictionary) -> RunState:
 	if node_index < 0:
 		push_warning("%s: node_state: unknown value" % RUN_CONTEXT)
 		return null
+	if not map_dict.is_empty():
+		run.map = MapData.from_dict(map_dict)
+		if run.map == null:
+			return null
 	var parsed_stats: RunStats = RunStats.from_dict(stats_dict)
 	if parsed_stats == null:
 		return null

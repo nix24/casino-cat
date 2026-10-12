@@ -1,9 +1,9 @@
 extends SceneTree
 ## Headless test runner. Exit code = number of failed tests (0 = all passed).
 ##
-## Usage: godot --headless --path . --script res://tests/run_tests.gd [-- --filter=<text>]
+## Usage: godot --headless --path . --script res://tests/run_tests.gd [-- --filter=<text>] [--slow]
 ## Finds every `*_test.gd` under tests/unit and tests/sim, runs each `test_*` method on a fresh
-## instance, and prints one line per failure.
+## instance, and prints one line per failure. `*_slow_test.gd` files run only with `--slow` (D39).
 ## Tests run on the first process frame, not in _init, so scene tests can add nodes to `root` and
 ## get `_ready` (T003).
 ## A script or engine error during a test fails it. Without this, a test that aborts on an error
@@ -64,6 +64,8 @@ func _find_test_files() -> Array[String]:
 	var found: Array[String] = []
 	for dir_path: String in TEST_DIRS:
 		for file: String in DirAccess.get_files_at(dir_path):
+			if file.ends_with("_slow_test.gd") and not OS.get_cmdline_user_args().has("--slow"):
+				continue
 			if file.ends_with("_test.gd"):
 				found.append(dir_path.path_join(file))
 	return found
