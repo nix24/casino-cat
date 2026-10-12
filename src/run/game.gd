@@ -11,6 +11,7 @@ const TITLE_SCENE: String = "res://src/scenes/title/title.tscn"
 const MAP_SCENE: String = "res://src/scenes/map/map.tscn"
 const BATTLE_SCENE: String = "res://src/scenes/battle/battle.tscn"
 const REWARD_SCENE: String = "res://src/scenes/reward/reward.tscn"
+const SHOP_SCENE: String = "res://src/scenes/shop/shop.tscn"
 const DEFAULT_ENEMY_ID: StringName = &"sewer_rat"
 
 var run: RunState
@@ -69,6 +70,8 @@ func goto(node_state: RunState.NodeState) -> void:
 			_enter_battle()
 		RunState.NodeState.REWARD:
 			_enter_reward()
+		RunState.NodeState.SHOP:
+			_enter_shop()
 		_:
 			push_error("no scene for %s yet" % RunState.NodeState.keys()[node_state])
 			_enter_map()
@@ -120,6 +123,10 @@ func enter_node(node: MapNode) -> void:
 		# "entered" survives a reload so the log tells Replay to redraw this enemy.
 		run.node_payload = {"enemy": String(entry.enemy_id), "entered": true}
 		goto(RunState.NodeState.BATTLE)
+		return
+	if entry.node_state == RunState.NodeState.SHOP:
+		run.node_payload = {"relic_rarity": node.payload.get("shop_relic_rarity", "common")}
+		goto(RunState.NodeState.SHOP)
 		return
 	run.node_state = RunState.NodeState.MAP
 	_enter_map(node.type)
@@ -185,6 +192,51 @@ func _enter_reward() -> void:
 	reward_scene.show_reward(reward, RunRules.owned_ids(run), run.pouch)
 	reward_scene.choice_made.connect(_on_reward_choice.bind(reward, reward_scene))
 	_change_scene(reward_scene)
+
+
+## Opens the shop. The stock is made on first arrival and kept in the node payload, so a reload
+## shows the same shelves (PRD §10.2).
+func _enter_shop() -> void:
+	var stock: Dictionary = {}
+	var saved_stock: Variant = run.node_payload.get("stock")
+	if saved_stock is Dictionary:
+		stock = ShopRules.stock_from_payload(saved_stock as Dictionary, db)
+	if stock.is_empty():
+		var rngs: RngSet = _run_rngs()
+		stock = ShopRules.generate(
+			run.act, run, db, _shop_relic_rarity(), [] as Array[StringName], rngs.shop
+		)
+		run.rng_states = rngs.to_states()
+	run.node_payload["stock"] = stock
+	var shop_scene: ShopScene = _load_scene(SHOP_SCENE) as ShopScene
+	shop_scene.show_shop(run, db, stock)
+	shop_scene.changed.connect(save_now)
+	shop_scene.reroll_requested.connect(_on_shop_reroll.bind(shop_scene))
+	shop_scene.leave_requested.connect(_on_shop_left)
+	_change_scene(shop_scene)
+
+
+func _on_shop_reroll(shop_scene: ShopScene) -> void:
+	var stock: Dictionary = run.node_payload["stock"]
+	var rngs: RngSet = _run_rngs()
+	var fresh: Dictionary = RunRules.reroll_shop(
+		run, stock, db, _shop_relic_rarity(), [] as Array[StringName], rngs.shop
+	)
+	if fresh.is_empty():
+		return
+	run.rng_states = rngs.to_states()
+	run.node_payload["stock"] = fresh
+	save_now()
+	shop_scene.show_shop(run, db, fresh)
+
+
+func _on_shop_left() -> void:
+	run.node_payload = {}
+	goto(RunState.NodeState.MAP)
+
+
+func _shop_relic_rarity() -> String:
+	return run.node_payload.get("relic_rarity", "common")
 
 
 func _on_reward_choice(

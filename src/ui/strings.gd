@@ -88,6 +88,27 @@ const LOADOUT_MP_FORMAT: String = "%d MP"
 const LOADOUT_DAMAGE_FORMAT: String = "%d dmg"
 const LOADOUT_UTILITY: String = "utility"
 
+const SHOP_TITLES: PackedStringArray = ["Back-alley stall", "Cashier cage", "Concierge desk"]
+const SHOP_HUD_FORMAT: String = "♥ %d/%d   ◉ %d Purrls"
+const SHOP_PRICE_FORMAT: String = "%d Purrls"
+const SHOP_SOLD: String = "Sold"
+const SHOP_KIND_MOVE: String = "Move"
+const SHOP_KIND_RELIC: String = "Relic"
+const SHOP_KIND_MODIFIER: String = "Modifier"
+const SHOP_KIND_ITEM: String = "Item"
+const SHOP_HEAL_FORMAT: String = "Heal %d HP · %d Purrls"
+const SHOP_REROLL_FORMAT: String = "Reroll stock · %d Purrls"
+const SHOP_REARRANGE: String = "Rearrange (free)"
+const SHOP_LEAVE: String = "Leave"
+const SHOP_TOO_POOR: String = "Not enough Purrls."
+const SHOP_POUCH_FULL: String = "Your pouch is full."
+const SHOP_LOADOUT_FULL: String = "Equipped and bag are full. Rearrange or release a move first."
+const SHOP_OWNED: String = "Already owned."
+const SHOP_PICK_MOVE_FORMAT: String = "Attach %s to which move?"
+const SHOP_PICK_SUIT: String = "Pick the new suit."
+const SHOP_CANCEL: String = "Cancel"
+const SHOP_FULL_HP: String = "Already at full HP."
+
 
 ## Glyph for [param suit]: ♠ ♥ ♦ ♣.
 static func suit_glyph(suit: Suit.Type) -> String:
@@ -200,3 +221,11 @@ static func loadout_move(move_data: MoveData, modifier_ids: Array[StringName]) -
 	if not modifier_ids.is_empty():
 		detail += " +" + ", ".join(modifier_ids)
 	return "%s %s\n%s" % [move_data.display_name, suit_glyph(move_data.suit), detail]
+
+
+## One shop card: "Move · Gleam ♦\n45 Purrls". [param detail] follows the name (a suit glyph or a
+## rarity); [param price_text] is the price, or "Sold".
+static func shop_card(
+	kind_label: String, name: String, detail: String, price_text: String
+) -> String:
+	return "%s · %s%s\n%s" % [kind_label, name, detail, price_text]

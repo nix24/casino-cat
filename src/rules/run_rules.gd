@@ -3,6 +3,9 @@ extends RefCounted
 ## Moves a run between map nodes (arch §5 state machine). Pure: the caller passes the content
 ## and the right RNG stream, and Game swaps scenes and saves.
 
+## Why buy refused, or OK (PRD §10.2, D34).
+enum BuyResult { OK, SOLD_OUT, TOO_POOR, LOADOUT_FULL, POUCH_FULL, CANT_ATTACH, OWNED }
+
 ## Why attach_modifier refused, or OK (D3).
 enum AttachResult {
 	OK, NO_SUCH_MOVE, UNKNOWN_MODIFIER, DOES_NOT_FIT, ALREADY_ATTACHED, SLOTS_FULL, NEEDS_SUIT
@@ -304,6 +307,79 @@ static func fits(modifier: ModifierData, move: MoveData) -> bool:
 		ModifierData.Fit.CARDS:
 			return family == &"cards"
 	return false
+
+
+## Buys stock entry [param index] (ShopRules stock). Nothing is charged unless the purchase lands:
+## a move needs a free equipped or bag slot, an item a free pouch slot (D34), a modifier a valid
+## [param target_move] (equipped then bag index) and, for Re-suited, [param suit_choice].
+static func buy(
+	run: RunState,
+	stock: Dictionary,
+	index: int,
+	db: ContentDb,
+	target_move: int = -1,
+	suit_choice: int = -1
+) -> BuyResult:
+	var entries: Array = stock["entries"]
+	assert(index >= 0 and index < entries.size(), "bad stock index")
+	var entry: Dictionary = entries[index]
+	if entry["sold"]:
+		return BuyResult.SOLD_OUT
+	var cost: int = entry["price"]
+	if run.purrls < cost:
+		return BuyResult.TOO_POOR
+	var id_text: String = entry["id"]
+	var id := StringName(id_text)
+	match entry["kind"]:
+		ShopRules.KIND_MOVE:
+			if not learn_move(run, id, db.tuning()):
+				return BuyResult.LOADOUT_FULL
+		ShopRules.KIND_RELIC:
+			if not gain_relic(run, db.relic(id)):
+				return BuyResult.OWNED
+		ShopRules.KIND_MODIFIER:
+			if attach_modifier(run, target_move, id, db, suit_choice) != AttachResult.OK:
+				return BuyResult.CANT_ATTACH
+		ShopRules.KIND_ITEM:
+			var free_slot: int = run.pouch.find(&"")
+			if free_slot < 0:
+				return BuyResult.POUCH_FULL
+			run.pouch[free_slot] = id
+	run.purrls -= cost
+	entry["sold"] = true
+	return BuyResult.OK
+
+
+## The shop's heal service: 40 Purrls for 30% of max HP (PRD §10.2). False when the cat can't pay
+## or is already at full HP.
+static func heal_service(run: RunState, tuning: TuningData) -> bool:
+	var heal: int = ShopRules.heal_amount(run, tuning)
+	if run.purrls < ShopRules.HEAL_PRICE or heal <= 0:
+		return false
+	run.purrls -= ShopRules.HEAL_PRICE
+	run.hp += heal
+	return true
+
+
+## Pays for a reroll and returns the new stock, or {} when the cat can't pay (PRD §10.2).
+static func reroll_shop(
+	run: RunState,
+	stock: Dictionary,
+	db: ContentDb,
+	relic_rarity: String,
+	unlocked_signatures: Array[StringName],
+	rng: SeededRng
+) -> Dictionary:
+	var done: int = stock["rerolls"]
+	var cost: int = ShopRules.reroll_cost(done, db.tuning())
+	if run.purrls < cost:
+		return {}
+	run.purrls -= cost
+	var fresh: Dictionary = ShopRules.generate(
+		run.act, run, db, relic_rarity, unlocked_signatures, rng
+	)
+	fresh["rerolls"] = done + 1
+	return fresh
 
 
 ## Ids of every move the cat owns, equipped or in the bag.
