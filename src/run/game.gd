@@ -12,6 +12,7 @@ const MAP_SCENE: String = "res://src/scenes/map/map.tscn"
 const BATTLE_SCENE: String = "res://src/scenes/battle/battle.tscn"
 const REWARD_SCENE: String = "res://src/scenes/reward/reward.tscn"
 const SHOP_SCENE: String = "res://src/scenes/shop/shop.tscn"
+const REST_SCENE: String = "res://src/scenes/rest/rest.tscn"
 const DEFAULT_ENEMY_ID: StringName = &"sewer_rat"
 
 var run: RunState
@@ -72,6 +73,8 @@ func goto(node_state: RunState.NodeState) -> void:
 			_enter_reward()
 		RunState.NodeState.SHOP:
 			_enter_shop()
+		RunState.NodeState.REST:
+			_enter_rest()
 		_:
 			push_error("no scene for %s yet" % RunState.NodeState.keys()[node_state])
 			_enter_map()
@@ -127,6 +130,10 @@ func enter_node(node: MapNode) -> void:
 	if entry.node_state == RunState.NodeState.SHOP:
 		run.node_payload = {"relic_rarity": node.payload.get("shop_relic_rarity", "common")}
 		goto(RunState.NodeState.SHOP)
+		return
+	if entry.node_state == RunState.NodeState.REST:
+		run.node_payload = {}
+		goto(RunState.NodeState.REST)
 		return
 	run.node_state = RunState.NodeState.MAP
 	_enter_map(node.type)
@@ -214,6 +221,15 @@ func _enter_shop() -> void:
 	shop_scene.reroll_requested.connect(_on_shop_reroll.bind(shop_scene))
 	shop_scene.leave_requested.connect(_on_shop_left)
 	_change_scene(shop_scene)
+
+
+## Opens the rest site. Nap and Practice end it, and RunRules.rest has already set the run to MAP.
+func _enter_rest() -> void:
+	var rest_scene: RestScene = _load_scene(REST_SCENE) as RestScene
+	rest_scene.show_rest(run, db)
+	rest_scene.finished.connect(goto.bind(RunState.NodeState.MAP))
+	rest_scene.changed.connect(save_now)
+	_change_scene(rest_scene)
 
 
 func _on_shop_reroll(shop_scene: ShopScene) -> void:

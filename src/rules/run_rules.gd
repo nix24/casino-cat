@@ -382,6 +382,19 @@ static func reroll_shop(
 	return fresh
 
 
+## Finishes the rest site with a Nap (target_slot ignored) or Practice on equipped
+## [param target_slot] (PRD §10.1). On success the run returns to the map. Rearrange is not a
+## choice here: it calls the loadout functions and leaves the node open.
+static func rest(run: RunState, is_nap: bool, target_slot: int, db: ContentDb) -> bool:
+	assert(run.node_state == RunState.NodeState.REST, "rest needs the run on a rest site")
+	if is_nap:
+		RestRules.nap(run, db.tuning())
+	elif not RestRules.practice(run, target_slot, db):
+		return false
+	run.node_state = RunState.NodeState.MAP
+	return true
+
+
 ## Ids of every move the cat owns, equipped or in the bag.
 static func owned_ids(run: RunState) -> Array[StringName]:
 	var ids: Array[StringName] = []

@@ -109,6 +109,14 @@ const SHOP_PICK_SUIT: String = "Pick the new suit."
 const SHOP_CANCEL: String = "Cancel"
 const SHOP_FULL_HP: String = "Already at full HP."
 
+const REST_TITLE: String = "Cardboard campfire"
+const REST_NAP_FORMAT: String = "Nap · heal %d HP"
+const REST_PRACTICE: String = "Practice"
+const REST_REARRANGE: String = "Rearrange"
+const REST_NO_FREE_SLOT: String = "No move has a free slot for Practice."
+const REST_PICK_MOVE: String = "Practice which move?"
+const REST_PRACTICE_OPTION_FORMAT: String = "%s %s · +%s"
+
 
 ## Glyph for [param suit]: ♠ ♥ ♦ ♣.
 static func suit_glyph(suit: Suit.Type) -> String:
