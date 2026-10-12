@@ -28,6 +28,10 @@ var acting_slot: int = 0
 var pending: GambleSession
 ## Turn the last pouch item was used on; one item per turn (PRD §8.3).
 var last_item_turn: int = -1
+## Indexes into enemy_data.overrides that already fired (once-only overrides, T018).
+var fired_overrides: Array[int] = []
+## True when this turn's enemy action was an override, so the pattern step is retried next turn.
+var override_acted: bool = false
 ## Lucky Charm: the next gamble resolves at its top tier.
 var guarantee_top_tier: bool = false
 ## Ball of Yarn: the enemy's next attack deals this percent (rounded down); 0 when unused.

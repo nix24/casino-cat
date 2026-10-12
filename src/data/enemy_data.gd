@@ -19,6 +19,8 @@ enum Tier { NORMAL, ELITE, BOSS }
 @export var max_hp: int
 ## Intents in order. The pattern loops.
 @export var pattern: Array[IntentData] = []
+## Intents that replace the next pattern step when their condition holds (T018).
+@export var overrides: Array[IntentOverrideData] = []
 ## True if the enemy can be drawn for the first battle of a run (PRD §9.2).
 @export var first_battle_pool: bool = false
 ## Sprite shown in battle.

@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://src/data/intent_data.gd" id="2_intent"]
+
+[sub_resource type="Resource" id="IntentData_traffic_cone_crow_0"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 8
+
+[sub_resource type="Resource" id="IntentData_traffic_cone_crow_1"]
+script = ExtResource("2_intent")
+kind = 3
+amount = 2
+
+[sub_resource type="Resource" id="IntentData_traffic_cone_crow_2"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 8
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"traffic_cone_crow"
+display_name = "Traffic Cone Crow"
+act = 1
+tier = 0
+suit = 2
+max_hp = 24
+pattern = Array[ExtResource("2_intent")]([SubResource("IntentData_traffic_cone_crow_0"), SubResource("IntentData_traffic_cone_crow_1"), SubResource("IntentData_traffic_cone_crow_2")])

@@ -1,7 +1,7 @@
 class_name IntentOverrideData
 extends Resource
-## Replaces an enemy's next intent when a condition is met (decision D8). Data only;
-## nothing reads it until the enemy-override work lands (T018).
+## Replaces an enemy's next intent when a condition is met (decision D8). EnemyIntents reads it
+## (T018).
 
 enum Condition { HP_BELOW_PCT }
 

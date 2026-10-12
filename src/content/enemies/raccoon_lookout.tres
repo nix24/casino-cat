@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://src/data/intent_data.gd" id="2_intent"]
+
+[sub_resource type="Resource" id="IntentData_raccoon_lookout_0"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 6
+
+[sub_resource type="Resource" id="IntentData_raccoon_lookout_1"]
+script = ExtResource("2_intent")
+kind = 1
+amount = 4
+hits = 2
+
+[sub_resource type="Resource" id="IntentData_raccoon_lookout_2"]
+script = ExtResource("2_intent")
+kind = 2
+amount = 6
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"raccoon_lookout"
+display_name = "Raccoon Lookout"
+act = 1
+tier = 0
+suit = 2
+max_hp = 25
+pattern = Array[ExtResource("2_intent")]([SubResource("IntentData_raccoon_lookout_0"), SubResource("IntentData_raccoon_lookout_1"), SubResource("IntentData_raccoon_lookout_2")])

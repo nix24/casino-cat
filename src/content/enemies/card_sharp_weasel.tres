@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://src/data/intent_data.gd" id="2_intent"]
+
+[sub_resource type="Resource" id="IntentData_card_sharp_weasel_0"]
+script = ExtResource("2_intent")
+kind = 4
+status = &"rattled"
+turns = 2
+
+[sub_resource type="Resource" id="IntentData_card_sharp_weasel_1"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 10
+
+[sub_resource type="Resource" id="IntentData_card_sharp_weasel_2"]
+script = ExtResource("2_intent")
+kind = 7
+special_id = &"cheat_suit"
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"card_sharp_weasel"
+display_name = "Card Sharp Weasel"
+act = 1
+tier = 1
+suit = 2
+max_hp = 55
+pattern = Array[ExtResource("2_intent")]([SubResource("IntentData_card_sharp_weasel_0"), SubResource("IntentData_card_sharp_weasel_1"), SubResource("IntentData_card_sharp_weasel_2")])

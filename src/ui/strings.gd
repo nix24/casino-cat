@@ -15,6 +15,10 @@ const ATTACK_GLYPH: String = "⚔"
 const SHIELD_GLYPH: String = "🛡"
 const DEBUFF_GLYPH: String = "▼"
 const NO_STATUS_TEXT: String = "—"
+## Special intents by special_id (PRD §9.3).
+const SPECIAL_INTENT_TEXT: Dictionary[StringName, String] = {
+	&"cheat_suit": "★ Cheat: takes the suit that beats yours",
+}
 const PIP_FULL: String = "●"
 const PIP_EMPTY: String = "○"
 const HEAL_COLOR: Color = Color("#7be08a")
@@ -175,14 +179,22 @@ static func mult(value: float) -> String:
 ## [param suit] is the enemy's suit, which the event doesn't carry.
 static func intent_text(event: BattleEvent, suit: Suit.Type) -> String:
 	match event.reason:
-		&"attack", &"multi_attack":
+		&"attack":
 			return "%s %s %d" % [ATTACK_GLYPH, suit_glyph(suit), event.amount]
+		&"multi_attack":
+			return "%s×%d %s %d" % [ATTACK_GLYPH, event.hits, suit_glyph(suit), event.amount]
 		&"guard":
 			return "%s %d" % [SHIELD_GLYPH, event.amount]
 		&"debuff":
-			return "%s %s %d" % [DEBUFF_GLYPH, event.status, event.turns]
+			return "%s %s %d" % [DEBUFF_GLYPH, String(event.status).capitalize(), event.turns]
 		&"steal_mp":
-			return "MP −%d" % event.amount
+			return "✋ −%d MP" % event.amount
+		&"buff":
+			return "▲ +%d dmg" % event.amount
+		&"heal":
+			return "✚ %d" % event.amount
+		&"special":
+			return SPECIAL_INTENT_TEXT.get(event.status, "★ %s" % event.status)
 		_:
 			return "? %s" % event.reason
 

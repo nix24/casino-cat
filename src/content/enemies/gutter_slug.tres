@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://src/data/intent_data.gd" id="2_intent"]
+
+[sub_resource type="Resource" id="IntentData_gutter_slug_0"]
+script = ExtResource("2_intent")
+kind = 4
+status = &"exposed"
+turns = 2
+
+[sub_resource type="Resource" id="IntentData_gutter_slug_1"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 4
+
+[sub_resource type="Resource" id="IntentData_gutter_slug_2"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 4
+
+[sub_resource type="Resource" id="IntentData_gutter_slug_3"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 4
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"gutter_slug"
+display_name = "Gutter Slug"
+act = 1
+tier = 0
+suit = 3
+max_hp = 30
+pattern = Array[ExtResource("2_intent")]([SubResource("IntentData_gutter_slug_0"), SubResource("IntentData_gutter_slug_1"), SubResource("IntentData_gutter_slug_2"), SubResource("IntentData_gutter_slug_3")])

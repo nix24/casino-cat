@@ -522,15 +522,27 @@ static func _settle_due(
 # --- enemy action ------------------------------------------------------------------------------
 
 
-## The enemy performs the intent it showed at the end of last turn.
+## The enemy performs the intent it showed at the end of last turn, unless an HP override replaces
+## it (T018); the override is announced with its own INTENT_SHOWN first.
 static func _enemy_acts(state: BattleState, tuning: TuningData, events: Array[BattleEvent]) -> void:
 	var intent: IntentData = state.next_intent
+	var override: IntentOverrideData = EnemyIntents.due_override(state)
+	state.override_acted = override != null
+	if override != null:
+		intent = override.intent
+		events.append(_intent_shown_event(intent))
 	var acted := BattleEvent.new(BattleEvent.Kind.ENEMY_ACTED, BattleEvent.Actor.ENEMY)
 	acted.reason = _intent_kind_name(intent.kind)
 	events.append(acted)
 	match intent.kind:
-		IntentData.Kind.ATTACK:
+		IntentData.Kind.ATTACK, IntentData.Kind.MULTI_ATTACK:
 			_enemy_attacks(state, intent, events)
+		IntentData.Kind.BUFF:
+			state.enemy.flat_damage_bonus += intent.amount
+		IntentData.Kind.HEAL:
+			_heal(state.enemy, BattleEvent.Actor.ENEMY, intent.amount, &"", events)
+		IntentData.Kind.SPECIAL:
+			_enemy_special(state, intent, events)
 		IntentData.Kind.GUARD:
 			_gain_shield(state.enemy, BattleEvent.Actor.ENEMY, intent.amount, tuning, events)
 		IntentData.Kind.DEBUFF:
@@ -540,6 +552,24 @@ static func _enemy_acts(state: BattleState, tuning: TuningData, events: Array[Ba
 			_change_mp(state, tuning, BattleEvent.Actor.ENEMY, &"steal", -stolen, events)
 		_:
 			assert(false, "intent kind %s is not implemented in T001" % acted.reason)
+
+
+## Special intents (PRD §9.3). Cheat (Card Sharp Weasel): the enemy takes the suit that beats the
+## cat's current suit until the end of the next turn. Nothing beats ♣, so it does nothing then.
+static func _enemy_special(
+	state: BattleState, intent: IntentData, events: Array[BattleEvent]
+) -> void:
+	match intent.special_id:
+		EnemyIntents.CHEAT_SUIT:
+			var counter: int = EnemyIntents.counter_suit(state.cat.suit)
+			if counter < 0 or counter == state.enemy.suit:
+				return
+			if state.suit_override_turns == 0:
+				state.suit_before_override = state.enemy.suit
+			state.suit_override_turns = EnemyIntents.CHEAT_TURNS
+			_shift_enemy_suit(state, counter as Suit.Type, events)
+		_:
+			assert(false, "special intent %s is not implemented" % intent.special_id)
 
 
 ## Enemy attacks are never repeat-penalised. The cat's suit is the one after this turn's shift.
@@ -595,7 +625,10 @@ static func _end_turn(
 	_change_mp(state, tuning, BattleEvent.Actor.CAT, &"taken", taken, events)
 	_change_mp(state, tuning, BattleEvent.Actor.CAT, &"move", _move_mp_gain(move) + hook_mp, events)
 
-	state.intent_index = (state.intent_index + 1) % state.enemy_data.pattern.size()
+	# An override took this turn's action, so the replaced pattern step comes up again (T018).
+	if not state.override_acted:
+		state.intent_index = (state.intent_index + 1) % state.enemy_data.pattern.size()
+	state.override_acted = false
 	state.next_intent = state.enemy_data.pattern[state.intent_index]
 	state.turn += 1
 	events.append(_turn_started_event(state.turn))
@@ -787,8 +820,9 @@ static func _intent_shown_event(intent: IntentData) -> BattleEvent:
 	var event := BattleEvent.new(BattleEvent.Kind.INTENT_SHOWN, BattleEvent.Actor.ENEMY)
 	event.reason = _intent_kind_name(intent.kind)
 	event.amount = intent.amount
-	event.status = intent.status
+	event.status = intent.status if intent.kind != IntentData.Kind.SPECIAL else intent.special_id
 	event.turns = intent.turns
+	event.hits = intent.hits
 	return event
 
 

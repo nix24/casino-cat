@@ -1,0 +1,42 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://src/data/intent_data.gd" id="2_intent"]
+[ext_resource type="Script" path="res://src/data/intent_override_data.gd" id="3_override"]
+
+[sub_resource type="Resource" id="IntentData_alley_possum_0"]
+script = ExtResource("2_intent")
+kind = 2
+amount = 10
+
+[sub_resource type="Resource" id="IntentData_alley_possum_1"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 6
+
+[sub_resource type="Resource" id="IntentData_alley_possum_2"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 6
+
+[sub_resource type="Resource" id="IntentData_possum_heal"]
+script = ExtResource("2_intent")
+kind = 6
+amount = 8
+
+[sub_resource type="Resource" id="Override_possum"]
+script = ExtResource("3_override")
+threshold_pct = 50
+once = true
+intent = SubResource("IntentData_possum_heal")
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"alley_possum"
+display_name = "Alley Possum"
+act = 1
+tier = 0
+suit = 1
+max_hp = 26
+pattern = Array[ExtResource("2_intent")]([SubResource("IntentData_alley_possum_0"), SubResource("IntentData_alley_possum_1"), SubResource("IntentData_alley_possum_2")])
+overrides = Array[ExtResource("3_override")]([SubResource("Override_possum")])

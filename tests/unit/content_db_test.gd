@@ -14,7 +14,17 @@ func test_load_all_finds_starter_content() -> void:
 	)
 	assert_eq(
 		_ids_of_enemies(db.all_enemies()),
-		[&"junkyard_pup", &"pickpocket_pigeon", &"sewer_rat"],
+		[
+			&"alley_possum",
+			&"bouncer_bulldog",
+			&"card_sharp_weasel",
+			&"gutter_slug",
+			&"junkyard_pup",
+			&"pickpocket_pigeon",
+			&"raccoon_lookout",
+			&"sewer_rat",
+			&"traffic_cone_crow",
+		],
 		"enemy ids"
 	)
 	assert_eq(db.tuning().resource_path, TUNING_PATH, "tuning path")
@@ -214,7 +224,15 @@ func test_enemies_for_act1_normal() -> void:
 	var db: ContentDb = ContentDb.load_all()
 	assert_eq(
 		_ids_of_enemies(db.enemies_for(1, EnemyData.Tier.NORMAL)),
-		[&"junkyard_pup", &"pickpocket_pigeon", &"sewer_rat"],
+		[
+			&"alley_possum",
+			&"gutter_slug",
+			&"junkyard_pup",
+			&"pickpocket_pigeon",
+			&"raccoon_lookout",
+			&"sewer_rat",
+			&"traffic_cone_crow",
+		],
 		"act 1 normal"
 	)
 	assert_eq(db.enemies_for(2, EnemyData.Tier.NORMAL).size(), 0, "act 2 normal")

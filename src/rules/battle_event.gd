@@ -68,6 +68,8 @@ var suit_to: Suit.Type = Suit.Type.CLUBS
 var status: StringName = &""
 var turns: int = 0
 var move_id: StringName = &""
+## Hits of an INTENT_SHOWN attack (MULTI_ATTACK shows ×hits).
+var hits: int = 1
 var reason: StringName = &""
 ## Gamble detail for the GAMBLE_*, DICE_*, LUCK_TRIGGERED events. Null on every other kind.
 var gamble: GambleEventData
