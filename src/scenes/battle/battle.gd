@@ -71,7 +71,7 @@ func _ready() -> void:
 	if _rngs == null:
 		_rngs = RngSet.for_seed(GREYBOX_SEED)
 	assert(
-		_ctx.loadout.size() == _move_buttons.size(),
+		not _ctx.loadout.is_empty() and _ctx.loadout.size() <= _move_buttons.size(),
 		"the battle needs one move button per loadout slot"
 	)
 	var start: BattleStart = BattleRules.start(enemy_data, _ctx, _rngs.battle)
@@ -159,6 +159,11 @@ func _gamble_costs() -> PackedInt32Array:
 func _setup_move_buttons() -> void:
 	for slot: int in _move_buttons.size():
 		var button: MoveButton = _move_buttons[slot]
+		if slot >= _ctx.loadout.size():
+			# A released move leaves the row short (D33): the spare buttons stay out of play.
+			button.visible = false
+			button.disabled = true
+			continue
 		button.setup(slot, _ctx.moves[_ctx.loadout[slot].move_id])
 		button.pressed.connect(use_move.bind(slot))
 		button.focus_entered.connect(_show_odds_for.bind(button))
@@ -214,12 +219,13 @@ func _set_input_on(is_on: bool) -> void:
 	_is_input_on = is_on
 	if not is_on:
 		_hide_odds()
-	for button: MoveButton in _move_buttons:
+	for slot: int in _ctx.loadout.size():
+		var button: MoveButton = _move_buttons[slot]
 		button.disabled = not is_on or not button.can_pay()
 
 
 func _refresh_previews() -> void:
-	for slot: int in _move_buttons.size():
+	for slot: int in _ctx.loadout.size():
 		_move_buttons[slot].set_preview(BattleRules.preview_move(_state, slot, _ctx))
 
 

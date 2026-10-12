@@ -75,6 +75,26 @@ func test_setup_uses_given_context() -> void:
 	_close_battle(scene)
 
 
+func test_short_loadout_hides_spare_buttons() -> void:
+	var db := ContentDb.load_all()
+	var run := RunState.start("KITTY-7731", db.tuning())
+	run.equipped.remove_at(3)
+	var scene := (load(BATTLE_PATH) as PackedScene).instantiate() as BattleScene
+	scene.speed = EventPlayer.SPEED_INSTANT
+	scene.setup(
+		db.enemy(&"sewer_rat"), BattleContext.from_run(run, db), RngSet.for_seed("KITTY-7731")
+	)
+	_root().add_child(scene)
+
+	assert_true(not _move_button(scene, 3).visible, "the 4th button is hidden")
+	assert_true(_move_button(scene, 3).disabled, "the 4th button is disabled")
+	assert_true(_move_button(scene, 2).visible, "the 3rd button stays")
+	scene.use_move(3)
+	scene.use_move(SLOT_SWIPE)
+	assert_eq(_enemy_hp_text(scene), "11/22", "a swipe still lands with 3 moves")
+	_close_battle(scene)
+
+
 func test_action_sent_once_per_accepted_move() -> void:
 	var scene: BattleScene = _open_battle()
 	var sent: Array[PlayerAction] = []

@@ -8,20 +8,23 @@ signal choice_made(choice: RunRules.RewardChoice)
 
 var _reward: RunRules.Reward
 var _owned_ids: Array[StringName] = []
+## Offer being learned in the loadout editor, or -1.
+var _learning_index: int = -1
 
+@onready var _layout: VBoxContainer = %Layout
 @onready var _title: Label = %Title
 @onready var _purrls: Label = %Purrls
 @onready var _item: Label = %Item
 @onready var _offers: VBoxContainer = %Offers
 @onready var _skip: Button = %Skip
-@onready var _message: Label = %Message
+@onready var _loadout: LoadoutEditor = %Loadout
 
 
 func _ready() -> void:
 	_title.text = Strings.REWARD_TITLE
-	_message.text = Strings.REWARD_LOADOUT_FULL
-	_message.visible = false
 	_skip.pressed.connect(_on_skip_pressed)
+	_loadout.learn_resolved.connect(_on_learn_resolved)
+	_loadout.learn_skipped.connect(_on_skip_pressed)
 	if _reward != null:
 		_render()
 
@@ -34,9 +37,13 @@ func show_reward(reward: RunRules.Reward, owned_ids: Array[StringName]) -> void:
 		_render()
 
 
-## Tells the player the pick didn't fit (PRD §4.2): both equipped and bag are full.
-func show_loadout_full() -> void:
-	_message.visible = true
+## Swaps the offers for the loadout editor (PRD §4.2) when offer [param offer_index] didn't fit:
+## both equipped and bag are full. Releasing a move there picks the offer; skipping skips it.
+func begin_learn(run: RunState, db: ContentDb, offer_index: int) -> void:
+	_learning_index = offer_index
+	_layout.visible = false
+	_loadout.visible = true
+	_loadout.begin_learn(run, db, _reward.move_offers[offer_index])
 
 
 func _render() -> void:
@@ -58,6 +65,10 @@ func _render() -> void:
 
 func _on_offer_pressed(index: int) -> void:
 	choice_made.emit(RunRules.RewardChoice.move(index))
+
+
+func _on_learn_resolved(_move_id: StringName) -> void:
+	choice_made.emit(RunRules.RewardChoice.move(_learning_index))
 
 
 func _on_skip_pressed() -> void:

@@ -61,7 +61,22 @@ const REWARD_ITEM_DROP: String = "A pouch item dropped. Pouches open soon."
 const REWARD_LEARN_FORMAT: String = "Learn %s %s · %s"
 const REWARD_OWNED: String = " (owned)"
 const REWARD_SKIP_FORMAT: String = "Skip +%d Purrls"
-const REWARD_LOADOUT_FULL: String = "Equipped and bag are full. Release a move first."
+
+const LOADOUT_EQUIPPED: String = "Equipped"
+const LOADOUT_BAG: String = "Bag"
+const LOADOUT_EMPTY_EQUIPPED: String = "Empty"
+const LOADOUT_EMPTY_BAG: String = "—"
+const LOADOUT_PICKED: String = " · picked"
+const LOADOUT_RELEASE: String = "Release"
+const LOADOUT_KEEP: String = "Keep"
+const LOADOUT_DONE: String = "Done"
+const LOADOUT_SKIP: String = "Skip"
+const LOADOUT_RELEASE_CONFIRM_FORMAT: String = "Release %s? It's gone for this run."
+const LOADOUT_LEARN_FORMAT: String = "New move: %s. Release a move to make room, or skip."
+const LOADOUT_LAST_MOVE: String = "The cat needs at least one equipped move."
+const LOADOUT_MP_FORMAT: String = "%d MP"
+const LOADOUT_DAMAGE_FORMAT: String = "%d dmg"
+const LOADOUT_UTILITY: String = "utility"
 
 
 ## Glyph for [param suit]: ♠ ♥ ♦ ♣.
@@ -159,3 +174,19 @@ static func reward_offer(move_data: MoveData, is_owned: bool) -> String:
 		% [suit_glyph(move_data.suit), move_data.display_name, rarity_name.to_lower()]
 	)
 	return text + (REWARD_OWNED if is_owned else "")
+
+
+## One loadout slot: "Gleam ♦\n5 dmg", "Paw Roll ♣\n10 MP", or "Curl Up ♣\nutility", plus
+## " +mod, mod" when the move carries modifiers.
+static func loadout_move(move_data: MoveData, modifier_ids: Array[StringName]) -> String:
+	var detail: String
+	match move_data.category:
+		MoveData.Category.GAMBLE:
+			detail = LOADOUT_MP_FORMAT % move_data.mp_cost
+		MoveData.Category.UTILITY:
+			detail = LOADOUT_UTILITY
+		_:
+			detail = LOADOUT_DAMAGE_FORMAT % move_data.base_damage
+	if not modifier_ids.is_empty():
+		detail += " +" + ", ".join(modifier_ids)
+	return "%s %s\n%s" % [move_data.display_name, suit_glyph(move_data.suit), detail]

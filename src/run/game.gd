@@ -190,7 +190,7 @@ func _on_reward_choice(
 	choice: RunRules.RewardChoice, reward: RunRules.Reward, reward_scene: RewardScene
 ) -> void:
 	if not RunRules.take_reward(run, reward, choice, db.tuning()):
-		reward_scene.show_loadout_full()
+		reward_scene.begin_learn(run, db, choice.index)
 		return
 	var pick: int = choice.index if choice.kind == RunRules.RewardChoice.Kind.MOVE else -1
 	if not run.action_log.is_empty():

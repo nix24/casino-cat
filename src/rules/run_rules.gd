@@ -146,15 +146,11 @@ static func take_reward(
 	return true
 
 
-## Adds [param move_id] to the first free equipped slot (a released slot has an empty id, D33),
+## Adds [param move_id] to a free equipped slot (a released slot leaves the row short, D33),
 ## else the bag (PRD §4.2). False when both are full.
 static func learn_move(run: RunState, move_id: StringName, tuning: TuningData) -> bool:
 	var instance := MoveInstance.new()
 	instance.move_id = move_id
-	for slot: int in run.equipped.size():
-		if run.equipped[slot].move_id == &"":
-			run.equipped[slot] = instance
-			return true
 	if run.equipped.size() < tuning.equipped_moves:
 		run.equipped.append(instance)
 	elif run.bag.size() < tuning.bag_size:
@@ -164,12 +160,55 @@ static func learn_move(run: RunState, move_id: StringName, tuning: TuningData) -
 	return true
 
 
+## Swaps equipped [param equipped_index] with bag [param bag_index] (PRD §4.2). Counts stay.
+static func swap_equipped_with_bag(run: RunState, equipped_index: int, bag_index: int) -> bool:
+	assert(run.node_state != RunState.NodeState.BATTLE, "loadout changes never happen in battle")
+	if not _in_range(run.equipped, equipped_index) or not _in_range(run.bag, bag_index):
+		return false
+	var equipped_move: MoveInstance = run.equipped[equipped_index]
+	run.equipped[equipped_index] = run.bag[bag_index]
+	run.bag[bag_index] = equipped_move
+	return true
+
+
+## Releases a move for the rest of the run. An equipped release leaves the row one shorter (no
+## bag move moves up), and the last equipped move can't be released (D33).
+static func release_move(run: RunState, from_bag: bool, index: int) -> bool:
+	assert(run.node_state != RunState.NodeState.BATTLE, "loadout changes never happen in battle")
+	var moves: Array[MoveInstance] = run.bag if from_bag else run.equipped
+	if not _in_range(moves, index) or (not from_bag and moves.size() == 1):
+		return false
+	moves.remove_at(index)
+	return true
+
+
+## Moves an equipped move into the bag when it has room. The last equipped move stays (D33).
+static func move_to_bag(run: RunState, equipped_index: int, tuning: TuningData) -> bool:
+	assert(run.node_state != RunState.NodeState.BATTLE, "loadout changes never happen in battle")
+	if not _in_range(run.equipped, equipped_index) or run.equipped.size() == 1:
+		return false
+	if run.bag.size() >= tuning.bag_size:
+		return false
+	run.bag.append(run.equipped[equipped_index])
+	run.equipped.remove_at(equipped_index)
+	return true
+
+
+## Moves a bagged move into the equipped row when it has room.
+static func equip_from_bag(run: RunState, bag_index: int, tuning: TuningData) -> bool:
+	assert(run.node_state != RunState.NodeState.BATTLE, "loadout changes never happen in battle")
+	if not _in_range(run.bag, bag_index) or run.equipped.size() >= tuning.equipped_moves:
+		return false
+	run.equipped.append(run.bag[bag_index])
+	run.bag.remove_at(bag_index)
+	return true
+
+
 ## Ids of every move the cat owns, equipped or in the bag.
 static func owned_ids(run: RunState) -> Array[StringName]:
 	var ids: Array[StringName] = []
 	for instance: MoveInstance in run.equipped + run.bag:
-		if instance.move_id != &"":
-			ids.append(instance.move_id)
+		ids.append(instance.move_id)
 	return ids
 
 
@@ -187,3 +226,7 @@ static func _pick_enemy(pool: Array[EnemyData], rng: SeededRng) -> StringName:
 	if pool.is_empty():
 		return &""
 	return pool[rng.range_int(0, pool.size() - 1)].id
+
+
+static func _in_range(moves: Array[MoveInstance], index: int) -> bool:
+	return index >= 0 and index < moves.size()

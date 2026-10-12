@@ -52,17 +52,6 @@ func test_take_move_fills_equipped_then_bag() -> void:
 	assert_eq(run.equipped.size(), 4, "a free equipped slot fills first")
 
 
-func test_take_move_fills_an_empty_slot() -> void:
-	var db: ContentDb = ContentDb.load_all()
-	var run: RunState = RunState.start("RUN-1", db.tuning())
-	run.equipped[2].move_id = &""
-	assert_true(
-		RunRules.take_reward(run, _reward(db, 0), RunRules.RewardChoice.move(0), db.tuning())
-	)
-	assert_eq(run.equipped[2].move_id, &"loaded_paws", "the released slot (D33)")
-	assert_eq(run.bag.size(), 0)
-
-
 func test_take_move_rejects_when_full() -> void:
 	var db: ContentDb = ContentDb.load_all()
 	var run: RunState = RunState.start("RUN-1", db.tuning())
