@@ -16,6 +16,8 @@ const SHOP_SCENE: String = "res://src/scenes/shop/shop.tscn"
 const REST_SCENE: String = "res://src/scenes/rest/rest.tscn"
 const EVENT_SCENE: String = "res://src/scenes/event/event.tscn"
 const BOSS_REWARD_SCENE: String = "res://src/scenes/reward/boss_reward.tscn"
+const TREASURE_SCENE: String = "res://src/scenes/treasure/treasure.tscn"
+const SUMMARY_SCENE: String = "res://src/scenes/summary/summary.tscn"
 const DEFAULT_ENEMY_ID: StringName = &"sewer_rat"
 
 var run: RunState
@@ -31,6 +33,8 @@ var _battle_rngs: RngSet
 var _battle_entry: Dictionary = {}
 ## The battle screen in progress, read once when it finishes.
 var _battle: BattleScene
+## Ticks (ms) up to which run.stats.duration_s has counted play time.
+var _clock_ms: int = 0
 
 
 func _ready() -> void:
@@ -63,6 +67,7 @@ func continue_run() -> bool:
 	if loaded.node_state == RunState.NodeState.VICTORY:
 		return false
 	run = loaded
+	_clock_ms = Time.get_ticks_msec()
 	run_changed.emit()
 	return true
 
@@ -83,6 +88,8 @@ func goto(node_state: RunState.NodeState) -> void:
 			_enter_rest()
 		RunState.NodeState.EVENT:
 			_enter_event()
+		RunState.NodeState.TREASURE:
+			_enter_treasure()
 		RunState.NodeState.BOSS_REWARD:
 			_enter_boss_reward()
 		_:
@@ -92,14 +99,18 @@ func goto(node_state: RunState.NodeState) -> void:
 	run_changed.emit()
 
 
-## Ends the run after a loss. It is saved as DEFEAT and the player goes back to the title.
-func abandon_run() -> void:
-	if run != null:
-		run.node_state = RunState.NodeState.DEFEAT
-		save_now()
+## Ends the run as won or lost (D32): the history entry goes to meta.json, run.json and its backup
+## are deleted, and [member run] is cleared. Returns the entry for the summary screen.
+func end_run(is_won: bool) -> Dictionary:
+	_count_play_time()
+	run.node_state = RunState.NodeState.VICTORY if is_won else RunState.NodeState.DEFEAT
+	var entry: Dictionary = RunSummary.build_entry(run, is_won, Time.get_date_string_from_system())
+	meta.append_history(entry)
+	save_meta()
+	save_store.delete_file(RUN_FILE)
 	run = null
 	run_changed.emit()
-	_change_scene(_load_scene(TITLE_SCENE))
+	return entry
 
 
 ## Writes [member run] to run.json. A failed write is kept in save_store.last_result.
@@ -107,7 +118,16 @@ func save_now() -> void:
 	if run == null:
 		push_error("save_now called with no run")
 		return
+	_count_play_time()
 	save_store.write_json(RUN_FILE, run.to_dict())
+
+
+## Adds the whole seconds played since the last count to the run's duration; the remainder carries.
+func _count_play_time() -> void:
+	var now: int = Time.get_ticks_msec()
+	var seconds: int = (now - _clock_ms) / 1000
+	run.stats.duration_s += seconds
+	_clock_ms += seconds * 1000
 
 
 ## Writes [member meta] to meta.json. A failed write is kept in save_store.last_result.
@@ -143,7 +163,18 @@ func _on_boss_relic_chosen(relic_index: int, reward: RunRules.BossReward) -> voi
 	var rngs: RngSet = _run_rngs()
 	RunRules.take_boss_reward(run, reward, relic_index, db, rngs.map)
 	run.rng_states = rngs.to_states()
+	if run.node_state == RunState.NodeState.VICTORY:
+		_show_summary(end_run(true))
+		return
 	goto(RunState.NodeState.MAP)
+
+
+## Opens the run summary for a finished run's history [param entry]. The run is already gone.
+func _show_summary(entry: Dictionary) -> void:
+	var scene: SummaryScene = _load_scene(SUMMARY_SCENE) as SummaryScene
+	scene.show_summary(entry, db)
+	scene.finished.connect(func() -> void: _change_scene(_load_scene(TITLE_SCENE)))
+	_change_scene(scene)
 
 
 func _start_run(run_seed: String) -> void:
@@ -156,6 +187,7 @@ func _start_run(run_seed: String) -> void:
 		)
 		seed_text = SeedWords.generate(entropy)
 	run = RunState.start(seed_text, db.tuning())
+	_clock_ms = Time.get_ticks_msec()
 	save_now()
 	run_changed.emit()
 
@@ -184,6 +216,10 @@ func enter_node(node: MapNode) -> void:
 	if entry.node_state == RunState.NodeState.SHOP:
 		run.node_payload = {"relic_rarity": node.payload.get("shop_relic_rarity", "common")}
 		goto(RunState.NodeState.SHOP)
+		return
+	if entry.node_state == RunState.NodeState.TREASURE:
+		run.node_payload = {"rarity": node.payload.get("treasure_rarity", "common")}
+		goto(RunState.NodeState.TREASURE)
 		return
 	if entry.node_state == RunState.NodeState.REST:
 		run.node_payload = {}
@@ -294,6 +330,35 @@ func _enter_rest() -> void:
 	_change_scene(rest_scene)
 
 
+## Opens the chest. Once opened, the payload keeps the relic id, so a reload never draws twice.
+func _enter_treasure() -> void:
+	var scene: TreasureScene = _load_scene(TREASURE_SCENE) as TreasureScene
+	var rarity: String = run.node_payload.get("rarity", "common")
+	var relic_id: String = run.node_payload.get("relic", "")
+	var relic: RelicData = db.relic(StringName(relic_id)) if relic_id != "" else null
+	scene.show_chest(run.act, rarity, relic, run.node_payload.has("relic"))
+	scene.open_requested.connect(_on_chest_opened.bind(scene))
+	scene.finished.connect(_on_treasure_left)
+	_change_scene(scene)
+
+
+func _on_chest_opened(scene: TreasureScene) -> void:
+	if run.node_payload.has("relic"):
+		return
+	var rngs: RngSet = _run_rngs()
+	var rarity: String = run.node_payload.get("rarity", "common")
+	var relic: RelicData = TreasureRules.open_chest(run, rarity, db, rngs.reward)
+	run.rng_states = rngs.to_states()
+	run.node_payload["relic"] = String(relic.id) if relic != null else ""
+	save_now()
+	scene.show_relic(relic)
+
+
+func _on_treasure_left() -> void:
+	run.node_payload = {}
+	goto(RunState.NodeState.MAP)
+
+
 ## Opens the event the node payload names. Once a choice is made the payload says "resolved", so a
 ## reload never offers the choices twice.
 func _enter_event() -> void:
@@ -401,7 +466,7 @@ func _on_battle_finished(outcome: BattleState.Outcome) -> void:
 		run.hp = state.cat.hp
 		goto(RunState.NodeState.MAP)
 		return
-	abandon_run()
+	_show_summary(end_run(false))
 
 
 func _on_speed_changed(speed: int) -> void:

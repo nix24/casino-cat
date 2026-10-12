@@ -17,6 +17,8 @@ const FIRST_BATTLE_ROW: int = 1
 ## Boss Purrls by act (PRD §10.6); the act 3 boss ends the run instead (T020).
 const BOSS_PURRLS: Array[int] = [70, 90, 0]
 const BOSS_RELIC_OFFERS: int = 3
+## The last act: beating its boss wins the run (PRD §3.2).
+const FINAL_ACT: int = 3
 ## Purrls for skipping the boss relic (PRD §3.2).
 const BOSS_SKIP_PURRLS: int = 40
 ## Modifier slots per move (PRD §8.1).
@@ -449,7 +451,8 @@ static func finish_boss(
 
 
 ## Takes relic [param relic_index] (or -1 to skip for +40 Purrls), pays the boss Purrls, heals 50%
-## of max HP (round half up, D15), then starts the next act with [param map_rng] (PRD §3.2).
+## of max HP (round half up, D15), then starts the next act with [param map_rng] (PRD §3.2). After
+## the Act 3 boss the run is won instead (D32).
 static func take_boss_reward(
 	run: RunState, reward: BossReward, relic_index: int, db: ContentDb, map_rng: SeededRng
 ) -> void:
@@ -460,6 +463,10 @@ static func take_boss_reward(
 	run.purrls += reward.purrls
 	var heal: int = floori(run.max_hp * db.tuning().act_heal_pct / 100.0 + 0.5)
 	run.hp = mini(run.max_hp, run.hp + heal)
+	if run.act >= FINAL_ACT:
+		run.node_state = RunState.NodeState.VICTORY
+		run.node_payload = {}
+		return
 	start_act(run, db, map_rng)
 
 

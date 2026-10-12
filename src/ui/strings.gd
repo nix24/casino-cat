@@ -123,6 +123,20 @@ const SHOP_PICK_SUIT: String = "Pick the new suit."
 const SHOP_CANCEL: String = "Cancel"
 const SHOP_FULL_HP: String = "Already at full HP."
 
+## Chest names by act (PRD §10.4).
+const TREASURE_TITLES: PackedStringArray = ["A dropped purse", "A vault box", "A jewelry case"]
+const TREASURE_RARITY_FORMAT: String = "Holds 1 %s relic."
+const TREASURE_OPEN: String = "Open it"
+const TREASURE_EMPTY: String = "Empty. The cat already owns everything in here."
+
+const SUMMARY_TITLE_WON: String = "The house is beaten"
+const SUMMARY_TITLE_LOST: String = "Out cold"
+## "Act 2 · row 9 · 31:40 · KITTY-7731" (PRD §13.8).
+const SUMMARY_LINE_FORMAT: String = "Act %d · row %d · %d:%02d · %s"
+const SUMMARY_BUILD_LABEL: String = "Build:"
+const SUMMARY_RELICS_LABEL: String = "Relics:"
+const SUMMARY_NONE: String = "none"
+
 const REST_TITLE: String = "Cardboard campfire"
 const REST_NAP_FORMAT: String = "Nap · heal %d HP"
 const REST_PRACTICE: String = "Practice"

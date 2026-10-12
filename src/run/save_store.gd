@@ -60,6 +60,14 @@ func _swap_in_tmp_file(path: String, bak_path: String, tmp_path: String) -> Resu
 	return Result.OK
 
 
+## Deletes [param file_name] with its .bak and .tmp, so nothing is left to read back (D32).
+func delete_file(file_name: String) -> void:
+	var path := base_dir.path_join(file_name)
+	for doomed: String in [path, path + ".bak", path + ".tmp"]:
+		if FileAccess.file_exists(doomed):
+			DirAccess.remove_absolute(doomed)
+
+
 ## Reads [param file_name], then its .bak. Returns the first usable file, migrated to the current
 ## version. Returns {} on failure and sets [member last_result].
 func read_json(file_name: String) -> Dictionary:
