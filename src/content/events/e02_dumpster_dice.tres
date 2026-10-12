@@ -1,0 +1,72 @@
+[gd_resource type="Resource" script_class="EventData" format=3]
+
+[ext_resource type="Script" uid="uid://d3yf0ubuu1ycm" path="res://src/data/event_data.gd" id="1_event"]
+[ext_resource type="Script" uid="uid://cm71nm67qfasm" path="res://src/data/event_choice_data.gd" id="2_choice"]
+[ext_resource type="Script" uid="uid://ce1rib2hrsotr" path="res://src/data/event_outcome_data.gd" id="3_outcome"]
+[ext_resource type="Script" uid="uid://dwmga5nfcqahs" path="res://src/data/run_effect_data.gd" id="4_effect"]
+
+[sub_resource type="Resource" id="Effect_eat_tuna_0_0"]
+script = ExtResource("4_effect")
+kind = 1
+amount = 6
+
+[sub_resource type="Resource" id="Outcome_eat_tuna_0"]
+script = ExtResource("3_outcome")
+probability = 1.0
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_eat_tuna_0_0")])
+result_text = "Cold tuna, warm belly. You lick the tin clean and feel 6 HP better."
+
+[sub_resource type="Resource" id="Choice_eat_tuna"]
+script = ExtResource("2_choice")
+id = &"eat_tuna"
+label = "Eat the leftover tuna"
+is_safe = true
+outcomes = Array[ExtResource("3_outcome")]([SubResource("Outcome_eat_tuna_0")])
+
+[sub_resource type="Resource" id="Effect_roll_0_0"]
+script = ExtResource("4_effect")
+kind = 1
+amount = -5
+
+[sub_resource type="Resource" id="Outcome_roll_0"]
+script = ExtResource("3_outcome")
+probability = 0.4166666666666667
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_roll_0_0")])
+result_text = "Low roll. The rat keeps the dice, the change, and 5 of your HP."
+
+[sub_resource type="Resource" id="Effect_roll_1_0"]
+script = ExtResource("4_effect")
+kind = 0
+amount = 20
+
+[sub_resource type="Resource" id="Outcome_roll_1"]
+script = ExtResource("3_outcome")
+probability = 0.4166666666666667
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_roll_1_0")])
+result_text = "A solid middle roll. The rat counts out 20 Purrls, grumbling into his bowler."
+
+[sub_resource type="Resource" id="Effect_roll_2_0"]
+script = ExtResource("4_effect")
+kind = 0
+amount = 30
+
+[sub_resource type="Resource" id="Outcome_roll_2"]
+script = ExtResource("3_outcome")
+probability = 0.16666666666666666
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_roll_2_0")])
+result_text = "Double digits. The rat whistles, pays 30 Purrls, and pockets the dice for good."
+
+[sub_resource type="Resource" id="Choice_roll"]
+script = ExtResource("2_choice")
+id = &"roll"
+label = "Roll the 2d6"
+is_safe = false
+outcomes = Array[ExtResource("3_outcome")]([SubResource("Outcome_roll_0"), SubResource("Outcome_roll_1"), SubResource("Outcome_roll_2")])
+
+[resource]
+script = ExtResource("1_event")
+id = &"e02_dumpster_dice"
+act = 1
+title = "Dumpster Dice"
+text = "A dumpster lid clangs open and two dice skid across the wet asphalt. A rat in a bowler hat tips his brim. \"Roll them, kitty. Under seven stings. Seven to nine pays. Ten or more pays very well.\""
+choices = Array[ExtResource("2_choice")]([SubResource("Choice_eat_tuna"), SubResource("Choice_roll")])

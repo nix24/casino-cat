@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" path="res://src/data/move_data.gd" id="1_move"]
+[ext_resource type="Script" uid="uid://4ldioplohfg4" path="res://src/data/effect_data.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="EffectData_pounce_exposed"]
+script = ExtResource("2_effect")
+kind = 5
+status = &"exposed"
+turns = 1
+
+[resource]
+script = ExtResource("1_move")
+id = &"pounce"
+display_name = "Pounce"
+suit = 0
+category = 0
+rarity = 1
+base_damage = 10
+hits = 1
+mp_cost = 0
+effects = Array[ExtResource("2_effect")]([SubResource("EffectData_pounce_exposed")])
+description = "Deal {damage} damage. You are Exposed for {self_status_turns} turn."
+flavor = "Leap now, explain the bruise later."

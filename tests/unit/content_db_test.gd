@@ -9,7 +9,7 @@ func test_load_all_finds_starter_content() -> void:
 	var db: ContentDb = ContentDb.load_all()
 	assert_eq(
 		_ids_of_moves(db.all_moves()),
-		[&"curl_up", &"loaded_paws", &"paw_roll", &"scratch", &"snake_eyes", &"swipe"],
+		[&"curl_up", &"loaded_paws", &"paw_roll", &"pounce", &"scratch", &"snake_eyes", &"swipe"],
 		"move ids"
 	)
 	assert_eq(
@@ -141,8 +141,8 @@ func test_validate_catches_gamble_base_damage_mismatch() -> void:
 func test_validate_catches_basic_move_ceiling() -> void:
 	var db: ContentDb = ContentDb.load_all()
 	var moves: Array[MoveData] = db.all_moves()
-	# The starter pool already has two basic moves (scratch, swipe); 11 more makes 13.
-	for index: int in 11:
+	# Content already has three basic moves (scratch, swipe, pounce); 10 more makes 13.
+	for index: int in 10:
 		var basic := MoveData.new()
 		basic.id = StringName("basic_test_%d" % index)
 		basic.category = MoveData.Category.BASIC
@@ -204,7 +204,9 @@ func test_moves_by_rarity_category() -> void:
 		"rare gamble"
 	)
 	assert_eq(
-		db.moves_by(MoveData.Rarity.COMMON, MoveData.Category.BASIC).size(), 0, "common basic"
+		_ids_of_moves(db.moves_by(MoveData.Rarity.COMMON, MoveData.Category.BASIC)),
+		[&"pounce"],
+		"common basic"
 	)
 
 

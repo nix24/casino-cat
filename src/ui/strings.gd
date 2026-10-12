@@ -117,6 +117,29 @@ const REST_NO_FREE_SLOT: String = "No move has a free slot for Practice."
 const REST_PICK_MOVE: String = "Practice which move?"
 const REST_PRACTICE_OPTION_FORMAT: String = "%s %s · +%s"
 
+const EVENT_ODDS_FORMAT: String = "%.1f%% %s"
+const EVENT_ODDS_SEPARATOR: String = " · "
+const EVENT_NEED_PURRLS_FORMAT: String = "Need %d more Purrls."
+const EVENT_POUCH_FULL: String = "Your pouch is full."
+const EVENT_LOADOUT_FULL: String = "Equipped and bag are full."
+const EVENT_NO_TARGET_FORMAT: String = "No move can take %s."
+const EVENT_NO_GAMBLE: String = "Needs a gamble move."
+const EVENT_CONTINUE: String = "Continue"
+const EVENT_PICK_MOVE_FORMAT: String = "Put %s on which move?"
+const EFFECT_PURRLS_GAIN: String = "+%d Purrls"
+const EFFECT_PURRLS_LOSS: String = "−%d Purrls"
+const EFFECT_HP_GAIN: String = "+%d HP"
+const EFFECT_HP_LOSS: String = "−%d HP"
+const EFFECT_HP_FLOOR: String = " (→ 1 HP)"
+const EFFECT_MAX_HP: String = "+%d max HP"
+const EFFECT_ITEM_RANDOM: String = "a pouch item"
+const EFFECT_RELIC_RANDOM: String = "a relic"
+const EFFECT_LEARN_FORMAT: String = "learn %s"
+const EFFECT_MODIFIER_FORMAT: String = "%s on a move"
+const EFFECT_BATTLE_FORMAT: String = "fight %s"
+const EFFECT_NEXT_MP_FORMAT: String = "+%d MP next battle"
+const EFFECT_NOTHING: String = "nothing"
+
 
 ## Glyph for [param suit]: ♠ ♥ ♦ ♣.
 static func suit_glyph(suit: Suit.Type) -> String:
@@ -237,3 +260,84 @@ static func shop_card(
 	kind_label: String, name: String, detail: String, price_text: String
 ) -> String:
 	return "%s · %s%s\n%s" % [kind_label, name, detail, price_text]
+
+
+## One event effect as the player reads it: "+20 Purrls", "−6 HP (→ 1 HP)", "learn Pounce".
+## Mirrors what EventRules applies, so the odds line is true.
+static func event_effect(effect: RunEffectData, run: RunState, db: ContentDb) -> String:
+	match effect.kind:
+		RunEffectData.Kind.PURRLS:
+			var purrls_format: String = (
+				EFFECT_PURRLS_GAIN if effect.amount >= 0 else EFFECT_PURRLS_LOSS
+			)
+			return purrls_format % absi(effect.amount)
+		RunEffectData.Kind.HP:
+			return _event_hp(effect.amount, run)
+		RunEffectData.Kind.HP_PCT:
+			return _event_hp(floori(run.max_hp * effect.amount / 100.0 + 0.5), run)
+		RunEffectData.Kind.MAX_HP:
+			return EFFECT_MAX_HP % effect.amount
+		RunEffectData.Kind.GAIN_ITEM:
+			return EFFECT_ITEM_RANDOM if effect.id == &"" else db.item(effect.id).display_name
+		RunEffectData.Kind.GAIN_RELIC:
+			return EFFECT_RELIC_RANDOM if effect.id == &"" else db.relic(effect.id).display_name
+		RunEffectData.Kind.LEARN_MOVE:
+			return EFFECT_LEARN_FORMAT % db.move(effect.id).display_name
+		RunEffectData.Kind.ADD_MODIFIER:
+			return EFFECT_MODIFIER_FORMAT % db.modifier(effect.id).display_name
+		RunEffectData.Kind.START_BATTLE:
+			return EFFECT_BATTLE_FORMAT % db.enemy(effect.id).display_name
+		RunEffectData.Kind.START_NEXT_BATTLE_MP:
+			return EFFECT_NEXT_MP_FORMAT % effect.amount
+		_:
+			return EFFECT_NOTHING
+
+
+## An outcome's effects as one line: "+20 Purrls, −3 HP".
+static func event_outcome(outcome: EventOutcomeData, run: RunState, db: ContentDb) -> String:
+	var parts := PackedStringArray()
+	for effect: RunEffectData in outcome.effects:
+		parts.append(event_effect(effect, run, db))
+	return ", ".join(parts)
+
+
+## A choice's odds line: the lone outcome for a safe choice, else "41.7% −5 HP · 58.3% +20 Purrls".
+static func event_odds(choice: EventChoiceData, run: RunState, db: ContentDb) -> String:
+	if choice.outcomes.size() == 1:
+		return event_outcome(choice.outcomes[0], run, db)
+	var parts := PackedStringArray()
+	for outcome: EventOutcomeData in choice.outcomes:
+		parts.append(
+			EVENT_ODDS_FORMAT % [outcome.probability * 100.0, event_outcome(outcome, run, db)]
+		)
+	return EVENT_ODDS_SEPARATOR.join(parts)
+
+
+## Why an event choice is disabled, from EventRules.disabled_reason, or "" for an unknown reason.
+static func event_disabled(
+	reason: StringName, choice: EventChoiceData, run: RunState, db: ContentDb
+) -> String:
+	match reason:
+		&"purrls":
+			return EVENT_NEED_PURRLS_FORMAT % (choice.min_purrls - run.purrls)
+		&"pouch_full":
+			return EVENT_POUCH_FULL
+		&"loadout_full":
+			return EVENT_LOADOUT_FULL
+		&"no_target":
+			for outcome: EventOutcomeData in choice.outcomes:
+				for effect: RunEffectData in outcome.effects:
+					if effect.kind == RunEffectData.Kind.ADD_MODIFIER:
+						return EVENT_NO_TARGET_FORMAT % db.modifier(effect.id).display_name
+			return ""
+		&"no_gamble":
+			return EVENT_NO_GAMBLE
+		_:
+			return ""
+
+
+static func _event_hp(amount: int, run: RunState) -> String:
+	if amount >= 0:
+		return EFFECT_HP_GAIN % amount
+	var text: String = EFFECT_HP_LOSS % absi(amount)
+	return text + (EFFECT_HP_FLOOR if run.hp + amount < 1 else "")

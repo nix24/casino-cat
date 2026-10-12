@@ -1,0 +1,60 @@
+[gd_resource type="Resource" script_class="EventData" format=3]
+
+[ext_resource type="Script" uid="uid://d3yf0ubuu1ycm" path="res://src/data/event_data.gd" id="1_event"]
+[ext_resource type="Script" uid="uid://cm71nm67qfasm" path="res://src/data/event_choice_data.gd" id="2_choice"]
+[ext_resource type="Script" uid="uid://ce1rib2hrsotr" path="res://src/data/event_outcome_data.gd" id="3_outcome"]
+[ext_resource type="Script" uid="uid://dwmga5nfcqahs" path="res://src/data/run_effect_data.gd" id="4_effect"]
+
+[sub_resource type="Resource" id="Effect_fold_0_0"]
+script = ExtResource("4_effect")
+kind = 10
+
+[sub_resource type="Resource" id="Outcome_fold_0"]
+script = ExtResource("3_outcome")
+probability = 1.0
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_fold_0_0")])
+result_text = "You fold before the first card. The weasel looks almost disappointed."
+
+[sub_resource type="Resource" id="Choice_fold"]
+script = ExtResource("2_choice")
+id = &"fold"
+label = "Fold and walk away"
+is_safe = true
+outcomes = Array[ExtResource("3_outcome")]([SubResource("Outcome_fold_0")])
+
+[sub_resource type="Resource" id="Effect_draw_0_0"]
+script = ExtResource("4_effect")
+kind = 1
+amount = -5
+
+[sub_resource type="Resource" id="Outcome_draw_0"]
+script = ExtResource("3_outcome")
+probability = 0.5
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_draw_0_0")])
+result_text = "A low card. The weasel's grin widens while you pay 5 HP for it."
+
+[sub_resource type="Resource" id="Effect_draw_1_0"]
+script = ExtResource("4_effect")
+kind = 0
+amount = 30
+
+[sub_resource type="Resource" id="Outcome_draw_1"]
+script = ExtResource("3_outcome")
+probability = 0.5
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_draw_1_0")])
+result_text = "A high card. The weasel slides 30 Purrls over, slower than he should."
+
+[sub_resource type="Resource" id="Choice_draw"]
+script = ExtResource("2_choice")
+id = &"draw"
+label = "Draw one card"
+is_safe = false
+outcomes = Array[ExtResource("3_outcome")]([SubResource("Outcome_draw_0"), SubResource("Outcome_draw_1")])
+
+[resource]
+script = ExtResource("1_event")
+id = &"e04_alley_card_table"
+act = 1
+title = "Alley Card Table"
+text = "A card table wobbles under a flickering lamp. A weasel in a frayed waistcoat fans out a deck face-down and taps it twice. \"Two of each value, one through ten. Draw one, kitty. Don't flinch.\""
+choices = Array[ExtResource("2_choice")]([SubResource("Choice_fold"), SubResource("Choice_draw")])

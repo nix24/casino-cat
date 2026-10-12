@@ -13,6 +13,7 @@ const BATTLE_SCENE: String = "res://src/scenes/battle/battle.tscn"
 const REWARD_SCENE: String = "res://src/scenes/reward/reward.tscn"
 const SHOP_SCENE: String = "res://src/scenes/shop/shop.tscn"
 const REST_SCENE: String = "res://src/scenes/rest/rest.tscn"
+const EVENT_SCENE: String = "res://src/scenes/event/event.tscn"
 const DEFAULT_ENEMY_ID: StringName = &"sewer_rat"
 
 var run: RunState
@@ -75,6 +76,8 @@ func goto(node_state: RunState.NodeState) -> void:
 			_enter_shop()
 		RunState.NodeState.REST:
 			_enter_rest()
+		RunState.NodeState.EVENT:
+			_enter_event()
 		_:
 			push_error("no scene for %s yet" % RunState.NodeState.keys()[node_state])
 			_enter_map()
@@ -134,6 +137,14 @@ func enter_node(node: MapNode) -> void:
 	if entry.node_state == RunState.NodeState.REST:
 		run.node_payload = {}
 		goto(RunState.NodeState.REST)
+		return
+	if entry.node_state == RunState.NodeState.EVENT:
+		var event_rngs: RngSet = _run_rngs()
+		var event: EventData = EventRules.pick_event(run, db, event_rngs.event)
+		run.rng_states = event_rngs.to_states()
+		run.seen_events.append(event.id)
+		run.node_payload = {"event": String(event.id)}
+		goto(RunState.NodeState.EVENT)
 		return
 	run.node_state = RunState.NodeState.MAP
 	_enter_map(node.type)
@@ -230,6 +241,42 @@ func _enter_rest() -> void:
 	rest_scene.finished.connect(goto.bind(RunState.NodeState.MAP))
 	rest_scene.changed.connect(save_now)
 	_change_scene(rest_scene)
+
+
+## Opens the event the node payload names. Once a choice is made the payload says "resolved", so a
+## reload never offers the choices twice.
+func _enter_event() -> void:
+	var event_id: String = run.node_payload.get("event", "")
+	var event: EventData = db.event(StringName(event_id))
+	if event == null or run.node_payload.get("resolved", false) == true:
+		if event == null:
+			push_warning("run is on EVENT without a known event; back to the map")
+		run.node_state = RunState.NodeState.MAP
+		run.node_payload = {}
+		_enter_map()
+		return
+	var rngs: RngSet = _run_rngs()
+	var event_scene: EventScene = _load_scene(EVENT_SCENE) as EventScene
+	event_scene.show_event(run, db, event, rngs.event)
+	event_scene.changed.connect(_on_event_changed.bind(rngs))
+	event_scene.finished.connect(_on_event_finished)
+	_change_scene(event_scene)
+
+
+## The choice (and its modifier) is in the run: keep the event stream and mark the node resolved.
+func _on_event_changed(rngs: RngSet) -> void:
+	run.rng_states = rngs.to_states()
+	run.node_payload["resolved"] = true
+	save_now()
+
+
+func _on_event_finished(battle_enemy_id: StringName) -> void:
+	if battle_enemy_id != &"" and db.enemy(battle_enemy_id) != null:
+		run.node_payload = {"enemy": String(battle_enemy_id)}
+		goto(RunState.NodeState.BATTLE)
+		return
+	run.node_payload = {}
+	goto(RunState.NodeState.MAP)
 
 
 func _on_shop_reroll(shop_scene: ShopScene) -> void:

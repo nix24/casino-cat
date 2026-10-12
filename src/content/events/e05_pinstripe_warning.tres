@@ -1,0 +1,71 @@
+[gd_resource type="Resource" script_class="EventData" format=3]
+
+[ext_resource type="Script" uid="uid://d3yf0ubuu1ycm" path="res://src/data/event_data.gd" id="1_event"]
+[ext_resource type="Script" uid="uid://cm71nm67qfasm" path="res://src/data/event_choice_data.gd" id="2_choice"]
+[ext_resource type="Script" uid="uid://ce1rib2hrsotr" path="res://src/data/event_outcome_data.gd" id="3_outcome"]
+[ext_resource type="Script" uid="uid://dwmga5nfcqahs" path="res://src/data/run_effect_data.gd" id="4_effect"]
+
+[sub_resource type="Resource" id="Effect_take_tip_0_0"]
+script = ExtResource("4_effect")
+kind = 10
+
+[sub_resource type="Resource" id="Outcome_take_tip_0"]
+script = ExtResource("3_outcome")
+probability = 1.0
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_take_tip_0_0")])
+result_text = "Big Lou turns ♥ at half HP: he heals 10, hits 14, makes you Weak 2, then hits 14 again."
+
+[sub_resource type="Resource" id="Choice_take_tip"]
+script = ExtResource("2_choice")
+id = &"take_tip"
+label = "Take the tip and walk"
+is_safe = true
+outcomes = Array[ExtResource("3_outcome")]([SubResource("Outcome_take_tip_0")])
+
+[sub_resource type="Resource" id="Effect_scratch_0_0"]
+script = ExtResource("4_effect")
+kind = 0
+amount = 30
+
+[sub_resource type="Resource" id="Outcome_scratch_0"]
+script = ExtResource("3_outcome")
+probability = 0.2
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_scratch_0_0")])
+result_text = "Fish! The tom whistles low and pays out 30 Purrls."
+
+[sub_resource type="Resource" id="Effect_scratch_1_0"]
+script = ExtResource("4_effect")
+kind = 0
+amount = 20
+
+[sub_resource type="Resource" id="Outcome_scratch_1"]
+script = ExtResource("3_outcome")
+probability = 0.3
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_scratch_1_0")])
+result_text = "A paw print. Worth 20 Purrls, says the tom, and he means it."
+
+[sub_resource type="Resource" id="Effect_scratch_2_0"]
+script = ExtResource("4_effect")
+kind = 1
+amount = -4
+
+[sub_resource type="Resource" id="Outcome_scratch_2"]
+script = ExtResource("3_outcome")
+probability = 0.5
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_scratch_2_0")])
+result_text = "Yarn. A dud card, and the tom's laugh stings for 4 HP."
+
+[sub_resource type="Resource" id="Choice_scratch"]
+script = ExtResource("2_choice")
+id = &"scratch"
+label = "Scratch one cell"
+is_safe = false
+outcomes = Array[ExtResource("3_outcome")]([SubResource("Outcome_scratch_0"), SubResource("Outcome_scratch_1"), SubResource("Outcome_scratch_2")])
+
+[resource]
+script = ExtResource("1_event")
+id = &"e05_pinstripe_warning"
+act = 1
+title = "Pinstripe Warning"
+text = "A one-eared alley tom leans on a dumpster, fanning three scratch cards like a losing hand. \"Big Lou runs this street. He hits like a brick, then halfway down he gets sentimental.\" He tilts one toward you. \"Scratch one. It's free, sweetheart.\""
+choices = Array[ExtResource("2_choice")]([SubResource("Choice_take_tip"), SubResource("Choice_scratch")])

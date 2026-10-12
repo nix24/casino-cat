@@ -1,0 +1,79 @@
+[gd_resource type="Resource" script_class="EventData" format=3]
+
+[ext_resource type="Script" uid="uid://d3yf0ubuu1ycm" path="res://src/data/event_data.gd" id="1_event"]
+[ext_resource type="Script" uid="uid://cm71nm67qfasm" path="res://src/data/event_choice_data.gd" id="2_choice"]
+[ext_resource type="Script" uid="uid://ce1rib2hrsotr" path="res://src/data/event_outcome_data.gd" id="3_outcome"]
+[ext_resource type="Script" uid="uid://dwmga5nfcqahs" path="res://src/data/run_effect_data.gd" id="4_effect"]
+
+[sub_resource type="Resource" id="Effect_nap_0_0"]
+script = ExtResource("4_effect")
+kind = 1
+amount = 10
+
+[sub_resource type="Resource" id="Outcome_nap_0"]
+script = ExtResource("3_outcome")
+probability = 1.0
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_nap_0_0")])
+result_text = "You curl up against her warm side. Ten HP of honest sleep."
+
+[sub_resource type="Resource" id="Choice_nap"]
+script = ExtResource("2_choice")
+id = &"nap"
+label = "Nap beside her"
+is_safe = true
+outcomes = Array[ExtResource("3_outcome")]([SubResource("Outcome_nap_0")])
+
+[sub_resource type="Resource" id="Effect_lesson_0_0"]
+script = ExtResource("4_effect")
+kind = 6
+id = &"pounce"
+
+[sub_resource type="Resource" id="Outcome_lesson_0"]
+script = ExtResource("3_outcome")
+probability = 1.0
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_lesson_0_0")])
+result_text = "She shows you how to leap first and land second. You learned Pounce."
+
+[sub_resource type="Resource" id="Choice_lesson"]
+script = ExtResource("2_choice")
+id = &"lesson"
+label = "Ask for a lesson"
+is_safe = true
+outcomes = Array[ExtResource("3_outcome")]([SubResource("Outcome_lesson_0")])
+
+[sub_resource type="Resource" id="Effect_flip_0_0"]
+script = ExtResource("4_effect")
+kind = 0
+amount = 25
+
+[sub_resource type="Resource" id="Outcome_flip_0"]
+script = ExtResource("3_outcome")
+probability = 0.55
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_flip_0_0")])
+result_text = "Heads. She yawns and nudges 25 Purrls your way."
+
+[sub_resource type="Resource" id="Effect_flip_1_0"]
+script = ExtResource("4_effect")
+kind = 1
+amount = -6
+
+[sub_resource type="Resource" id="Outcome_flip_1"]
+script = ExtResource("3_outcome")
+probability = 0.45
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_flip_1_0")])
+result_text = "Tails. She bats your ear for the trouble. That's 6 HP."
+
+[sub_resource type="Resource" id="Choice_flip"]
+script = ExtResource("2_choice")
+id = &"flip"
+label = "Flip her coin"
+is_safe = false
+outcomes = Array[ExtResource("3_outcome")]([SubResource("Outcome_flip_0"), SubResource("Outcome_flip_1")])
+
+[resource]
+script = ExtResource("1_event")
+id = &"e06_the_sleeping_tabby"
+act = 1
+title = "The Sleeping Tabby"
+text = "A tabby sprawls across a stack of crates, one paw on a jar of catnip. She cracks one eye. \"Nap here, learn Pounce off me, or flip my coin for a catnip sprinkle.\" Her grin says she already knows your pick."
+choices = Array[ExtResource("2_choice")]([SubResource("Choice_nap"), SubResource("Choice_lesson"), SubResource("Choice_flip")])

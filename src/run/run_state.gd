@@ -36,6 +36,8 @@ var node_state: NodeState = NodeState.MAP
 var node_payload: Dictionary = {}
 var action_log: Array[Dictionary] = []
 var stats: RunStats = RunStats.new()
+## Event ids already shown this run, so events don't repeat until all are seen (D54).
+var seen_events: Array[StringName] = []
 
 
 ## A fresh run with full HP, the starter kit, and the map at the start (arch §5, PRD §3).
@@ -76,6 +78,7 @@ func to_dict() -> Dictionary:
 		"node_payload": node_payload.duplicate(true),
 		"action_log": action_log.duplicate(true),
 		"stats": stats.to_dict(),
+		"seen_events": SaveReader.plain_ids(seen_events),
 	}
 
 
@@ -103,6 +106,9 @@ static func from_dict(d: Dictionary) -> RunState:
 	run.node_payload = reader.dict_at("node_payload")
 	run.action_log = reader.dicts_at("action_log")
 	var stats_dict: Dictionary = reader.dict_at("stats")
+	# Optional: saves written before T017 have no seen events.
+	if d.has("seen_events"):
+		run.seen_events = reader.ids_at("seen_events")
 	if not reader.ok():
 		reader.warn()
 		return null

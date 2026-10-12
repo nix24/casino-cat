@@ -1,0 +1,71 @@
+[gd_resource type="Resource" script_class="EventData" format=3]
+
+[ext_resource type="Script" uid="uid://d3yf0ubuu1ycm" path="res://src/data/event_data.gd" id="1_event"]
+[ext_resource type="Script" uid="uid://cm71nm67qfasm" path="res://src/data/event_choice_data.gd" id="2_choice"]
+[ext_resource type="Script" uid="uid://ce1rib2hrsotr" path="res://src/data/event_outcome_data.gd" id="3_outcome"]
+[ext_resource type="Script" uid="uid://dwmga5nfcqahs" path="res://src/data/run_effect_data.gd" id="4_effect"]
+
+[sub_resource type="Resource" id="Effect_walk_away_0_0"]
+script = ExtResource("4_effect")
+kind = 10
+
+[sub_resource type="Resource" id="Outcome_walk_away_0"]
+script = ExtResource("3_outcome")
+probability = 1.0
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_walk_away_0_0")])
+result_text = "You leave Sal to his bottle caps. He tips an imaginary hat at your back."
+
+[sub_resource type="Resource" id="Choice_walk_away"]
+script = ExtResource("2_choice")
+id = &"walk_away"
+label = "Walk away"
+is_safe = true
+outcomes = Array[ExtResource("3_outcome")]([SubResource("Outcome_walk_away_0")])
+
+[sub_resource type="Resource" id="Effect_pick_cup_0_0"]
+script = ExtResource("4_effect")
+kind = 0
+amount = 30
+
+[sub_resource type="Resource" id="Outcome_pick_cup_0"]
+script = ExtResource("3_outcome")
+probability = 0.3333333333333333
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_pick_cup_0_0")])
+result_text = "The pea rolls out under your paw. Sal coughs up 30 Purrls like it hurts."
+
+[sub_resource type="Resource" id="Effect_pick_cup_1_0"]
+script = ExtResource("4_effect")
+kind = 5
+id = &"sardine_tin"
+
+[sub_resource type="Resource" id="Outcome_pick_cup_1"]
+script = ExtResource("3_outcome")
+probability = 0.3333333333333333
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_pick_cup_1_0")])
+result_text = "No pea, but a Sardine Tin was wedged under the cap. Sal shrugs. Finders keepers."
+
+[sub_resource type="Resource" id="Effect_pick_cup_2_0"]
+script = ExtResource("4_effect")
+kind = 1
+amount = -6
+
+[sub_resource type="Resource" id="Outcome_pick_cup_2"]
+script = ExtResource("3_outcome")
+probability = 0.3333333333333333
+effects = Array[ExtResource("4_effect")]([SubResource("Effect_pick_cup_2_0")])
+result_text = "Empty cap. Sal's tail flicks your nose on the way back. That stung for 6 HP."
+
+[sub_resource type="Resource" id="Choice_pick_cup"]
+script = ExtResource("2_choice")
+id = &"pick_cup"
+label = "Pick a cup"
+is_safe = false
+outcomes = Array[ExtResource("3_outcome")]([SubResource("Outcome_pick_cup_0"), SubResource("Outcome_pick_cup_1"), SubResource("Outcome_pick_cup_2")])
+
+[resource]
+script = ExtResource("1_event")
+id = &"e01_sals_shell_game"
+act = 1
+title = "Sal's Shell Game"
+text = "Sal the ferret slides three bottle caps across an upturned crate. \"Shell game, sweetheart. Find the pea, take a prize.\" His tackle box smells of tuna and tax. Your whiskers twitch. The ferret smiles a little too wide."
+choices = Array[ExtResource("2_choice")]([SubResource("Choice_walk_away"), SubResource("Choice_pick_cup")])

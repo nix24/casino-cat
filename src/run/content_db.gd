@@ -1,7 +1,7 @@
 class_name ContentDb
 extends RefCounted
 ## Every content resource the game loads, looked up by id (arch §2). Moves, enemies, relics,
-## modifiers, items, and tuning load here; events join with their class (T017).
+## modifiers, items, events, and tuning load here.
 ## Pools are copies sorted by id, so callers never see directory order or the store.
 
 const MOVES_DIR: String = "res://src/content/moves"
@@ -9,6 +9,7 @@ const ENEMIES_DIR: String = "res://src/content/enemies"
 const RELICS_DIR: String = "res://src/content/relics"
 const MODIFIERS_DIR: String = "res://src/content/modifiers"
 const ITEMS_DIR: String = "res://src/content/items"
+const EVENTS_DIR: String = "res://src/content/events"
 const TUNING_PATH: String = "res://src/content/tuning.tres"
 
 ## Statuses from PRD §4.7. Any other status on an effect or intent is a content typo.
@@ -40,6 +41,7 @@ var _enemies: Array[EnemyData] = []
 var _relics: Array[RelicData] = []
 var _modifiers: Array[ModifierData] = []
 var _items: Array[ItemData] = []
+var _events: Array[EventData] = []
 var _tuning: TuningData
 
 
@@ -61,7 +63,8 @@ static func load_all() -> ContentDb:
 		_load_tuning(),
 		_load_relics(),
 		_load_modifiers(),
-		_load_items()
+		_load_items(),
+		_load_events()
 	)
 
 
@@ -74,6 +77,7 @@ static func from_parts(
 	relics: Array[RelicData] = [],
 	modifiers: Array[ModifierData] = [],
 	items: Array[ItemData] = [],
+	events: Array[EventData] = [],
 ) -> ContentDb:
 	var db := ContentDb.new(moves, enemies, tuning_data)
 	db._relics = relics.duplicate()
@@ -87,6 +91,10 @@ static func from_parts(
 	db._items = items.duplicate()
 	db._items.sort_custom(
 		func(a: ItemData, b: ItemData) -> bool: return String(a.id) < String(b.id)
+	)
+	db._events = events.duplicate()
+	db._events.sort_custom(
+		func(a: EventData, b: EventData) -> bool: return String(a.id) < String(b.id)
 	)
 	return db
 
@@ -129,6 +137,19 @@ func item(id: StringName) -> ItemData:
 		if item_data.id == id:
 			return item_data
 	return null
+
+
+## The event with this id, or null if none exists.
+func event(id: StringName) -> EventData:
+	for event_data: EventData in _events:
+		if event_data.id == id:
+			return event_data
+	return null
+
+
+## Events of [param act], sorted by id.
+func events_for(act: int) -> Array[EventData]:
+	return _events.filter(func(event_data: EventData) -> bool: return event_data.act == act)
 
 
 ## Every pouch item, sorted by id.
@@ -265,6 +286,17 @@ static func _load_items() -> Array[ItemData]:
 		else:
 			items.append(item_data)
 	return items
+
+
+static func _load_events() -> Array[EventData]:
+	var events: Array[EventData] = []
+	for path: String in _tres_paths(EVENTS_DIR):
+		var event_data: EventData = load(path) as EventData
+		if event_data == null:
+			push_error("%s is not an EventData; skipped" % path)
+		else:
+			events.append(event_data)
+	return events
 
 
 ## Tuning is required. A missing or wrong file falls back to the PRD defaults, with an error.

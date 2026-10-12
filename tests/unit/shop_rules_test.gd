@@ -6,8 +6,8 @@ func test_stock_composition_3_2_1_2() -> void:
 	var db: ContentDb = ContentDb.load_all()
 	var stock: Dictionary = _generate(db, "SHOP-1", 500)
 	var kinds: Array[String] = _kinds(stock)
-	# M2 content has two non-starter moves, both gambles, so slots 1-2 stay empty (D30).
-	assert_eq(kinds.count(ShopRules.KIND_MOVE), 1)
+	# M2 content has one non-starter basic move (Pounce), so slot 2 stays empty (D30).
+	assert_eq(kinds.count(ShopRules.KIND_MOVE), 2)
 	var first_id: String = _entries(stock)[0]["id"]
 	assert_eq(db.move(StringName(first_id)).category, MoveData.Category.GAMBLE)
 	assert_eq(kinds.count(ShopRules.KIND_RELIC), 1)
