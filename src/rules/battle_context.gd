@@ -14,6 +14,9 @@ var due: Dictionary[StringName, int] = {}
 var luck_bonus: int = 0
 ## Faces the next gamble's dice draw before the RNG, in order. Consumed when that gamble opens.
 var forced: Array[int] = []
+## The cat's HP and max HP carried in from the run. 0 means a fresh cat at the tuning max HP.
+var cat_hp: int = 0
+var cat_max_hp: int = 0
 ## Dev console only (D36): the cat cannot drop below 1 HP. Never set in a release build.
 var god_mode: bool = false
 
@@ -32,4 +35,6 @@ static func from_run(run: RunState, db: ContentDb) -> BattleContext:
 		instance.modifier_ids = run_move.modifier_ids.duplicate()
 		ctx.loadout.append(instance)
 	ctx.due = run.due.duplicate()
+	ctx.cat_hp = run.hp
+	ctx.cat_max_hp = run.max_hp
 	return ctx

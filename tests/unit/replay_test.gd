@@ -61,6 +61,35 @@ func test_replay_unknown_enemy_errors() -> void:
 	assert_eq(replay.events.size(), 0, "no events after an unknown enemy")
 
 
+func test_replay_entered_battle_and_reward() -> void:
+	var db := ContentDb.load_all()
+	var run := RunState.start(RUN_SEED, db.tuning())
+	var rngs := RngSet.for_seed(RUN_SEED)
+	rngs.apply_states(run.rng_states)
+	run.map = MapGen.generate(run.act, db.tuning(), rngs.map)
+	var node: MapNode = run.map.row_nodes(1)[0]
+	var entered: RunRules.NodeEntry = RunRules.enter_node(run, node, db, rngs.battle)
+	run.position = entered.position
+	var entry: Dictionary = ActionLog.battle_entry(run.position, entered.enemy_id, true)
+	var ctx: BattleContext = BattleContext.from_run(run, db)
+	var start: BattleStart = BattleRules.start(db.enemy(entered.enemy_id), ctx, rngs.battle)
+	for turn: int in 40:
+		if start.state.outcome != BattleState.Outcome.ONGOING:
+			break
+		var action: PlayerAction = _move_action(turn % 2)
+		ActionLog.record(entry, action)
+		BattleRules.apply(start.state, action, ctx, rngs)
+	assert_eq(start.state.outcome, BattleState.Outcome.WON, "the starter kit beats a first enemy")
+	var reward: RunRules.Reward = RunRules.finish_battle(run, start.state, db, [], rngs.reward)
+	RunRules.take_reward(run, reward, RunRules.RewardChoice.skip(), db.tuning())
+	var actions: Array = entry["actions"]
+	actions.append({"kind": "reward", "pick": -1})
+
+	var replay: Replay = Replay.play(RUN_SEED, [entry], db)
+	assert_eq(replay.error, "", "replay ran to the end")
+	assert_eq(replay.rng_states, rngs.to_states(), "map, battle, and reward draws line up")
+
+
 ## Swipe first so the cat has the MP for Paw Roll, then Paw Roll, then keep the gamble's faces.
 func _paw_roll_actions() -> Array[PlayerAction]:
 	return [_move_action(SLOT_SWIPE), _move_action(SLOT_PAW_ROLL), _choice_action([])]

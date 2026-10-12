@@ -6,11 +6,16 @@ extends RefCounted
 
 
 ## A new log entry for a battle on [param position] against [param enemy_id], with no actions yet.
-static func battle_entry(position: Vector2i, enemy_id: StringName) -> Dictionary:
+## [param entered] is true when the battle came from entering a map node (RunRules.enter_node drew
+## the enemy), false for a dev-console battle.
+static func battle_entry(
+	position: Vector2i, enemy_id: StringName, entered: bool = false
+) -> Dictionary:
 	return {
 		"node": [position.x, position.y],
 		"type": "battle",
 		"enemy": String(enemy_id),
+		"entered": entered,
 		"actions": [],
 	}
 

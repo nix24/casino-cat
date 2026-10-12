@@ -52,6 +52,11 @@ var _cat_attack_suit: Suit.Type = Suit.Type.CLUBS
 ]
 
 
+## The battle's state, for Game to close the battle with RunRules once it is over.
+func battle_state() -> BattleState:
+	return _state
+
+
 ## Sets the enemy, context, and RNG streams before the battle enters the tree. Game uses this for
 ## a run's battle. A battle opened on its own skips it and gets the greybox defaults in _ready.
 func setup(enemy: EnemyData, ctx: BattleContext, rngs: RngSet) -> void:

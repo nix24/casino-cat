@@ -55,6 +55,14 @@ const MAP_COMING_SOON_FORMAT: String = "%s: coming soon"
 const MAP_CONTINUE: String = "Continue"
 const MAP_TO_TITLE: String = "Title"
 
+const REWARD_TITLE: String = "Battle won"
+const REWARD_PURRLS_FORMAT: String = "+%d Purrls"
+const REWARD_ITEM_DROP: String = "A pouch item dropped. Pouches open soon."
+const REWARD_LEARN_FORMAT: String = "Learn %s %s · %s"
+const REWARD_OWNED: String = " (owned)"
+const REWARD_SKIP_FORMAT: String = "Skip +%d Purrls"
+const REWARD_LOADOUT_FULL: String = "Equipped and bag are full. Release a move first."
+
 
 ## Glyph for [param suit]: ♠ ♥ ♦ ♣.
 static func suit_glyph(suit: Suit.Type) -> String:
@@ -141,3 +149,13 @@ static func speed_text(at_speed: int) -> String:
 			return "speed: 2×"
 		_:
 			return "speed: instant"
+
+
+## One reward offer button: "Learn ♦ Gleam · uncommon", plus " (owned)" when the cat has it.
+static func reward_offer(move_data: MoveData, is_owned: bool) -> String:
+	var rarity_name: String = MoveData.Rarity.keys()[move_data.rarity]
+	var text: String = (
+		REWARD_LEARN_FORMAT
+		% [suit_glyph(move_data.suit), move_data.display_name, rarity_name.to_lower()]
+	)
+	return text + (REWARD_OWNED if is_owned else "")

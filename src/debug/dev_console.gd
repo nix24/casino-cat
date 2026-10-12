@@ -118,8 +118,10 @@ func _run_command(command_name: String, args: PackedStringArray) -> void:
 			_set_mp(args)
 		"force":
 			_force(args)
-		"goto", "node":
-			_print_line("not available yet: %s" % command_name)
+		"goto":
+			_goto(args)
+		"node":
+			_node(args)
 		"enemy":
 			_enemy(args)
 		"god":
@@ -233,6 +235,39 @@ func _enemy(args: PackedStringArray) -> void:
 	# node_payload is saved as JSON, so the id goes in as a plain String.
 	Game.run.node_payload = {"enemy": String(enemy_id)}
 	Game.goto(RunState.NodeState.BATTLE)
+	_set_open(false)
+
+
+## Enters the map node at row, col through Game.enter_node, like choosing it on the map.
+func _goto(args: PackedStringArray) -> void:
+	if args.size() != 2 or not args[0].is_valid_int() or not args[1].is_valid_int():
+		_print_usage("goto")
+		return
+	if Game.run == null or Game.run.map == null:
+		_print_line(NO_RUN_MESSAGE, true)
+		return
+	var node: MapNode = Game.run.map.node_at(args[0].to_int(), args[1].to_int())
+	if node == null:
+		_print_line("no map node at %s %s" % [args[0], args[1]], true)
+		return
+	Game.enter_node(node)
+	_set_open(false)
+
+
+## Enters a node of the given type where the cat stands, without adding it to the map.
+func _node(args: PackedStringArray) -> void:
+	if args.size() != 1:
+		_print_usage("node")
+		return
+	if Game.run == null:
+		_print_line(NO_RUN_MESSAGE, true)
+		return
+	var type_index: int = MapNode.type_from_name(args[0])
+	if type_index < 0:
+		_print_line("unknown node type: %s" % args[0], true)
+		return
+	var cell: Vector2i = Game.run.position
+	Game.enter_node(MapNode.new(cell.x, cell.y, type_index as MapNode.Type))
 	_set_open(false)
 
 

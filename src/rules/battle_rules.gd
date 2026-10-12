@@ -9,14 +9,15 @@ extends RefCounted
 const REGEN_HEAL: int = 3
 
 
-## Opens a battle against [param enemy]. The cat starts at full HP and CLUBS, with the loadout
-## copied from [param ctx]. Returns the state and the BATTLE_STARTED, TURN_STARTED, INTENT_SHOWN
-## events. [param _rng] is unused until a battle rule needs randomness.
+## Opens a battle against [param enemy]. The cat starts at the run's HP (full when [param ctx]
+## carries none) and CLUBS, with the loadout from [param ctx]. Returns the state and the
+## BATTLE_STARTED, TURN_STARTED, INTENT_SHOWN events. [param _rng] is unused until a battle rule
+## needs randomness.
 static func start(enemy: EnemyData, ctx: BattleContext, _rng: SeededRng) -> BattleStart:
 	assert(not enemy.pattern.is_empty(), "every enemy needs at least one intent")
 	var state := BattleState.new()
-	state.cat.max_hp = ctx.tuning.cat_max_hp
-	state.cat.hp = ctx.tuning.cat_max_hp
+	state.cat.max_hp = ctx.cat_max_hp if ctx.cat_max_hp > 0 else ctx.tuning.cat_max_hp
+	state.cat.hp = ctx.cat_hp if ctx.cat_hp > 0 else state.cat.max_hp
 	state.cat.suit = Suit.Type.CLUBS
 	state.enemy.max_hp = enemy.max_hp
 	state.enemy.hp = enemy.max_hp

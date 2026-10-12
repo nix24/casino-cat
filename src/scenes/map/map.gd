@@ -38,6 +38,8 @@ var _run: RunState
 ## The buttons the cat can press, left to right.
 var _reachable: Array[MapNodeButton] = []
 var _pulse_time: float = 0.0
+## A MapNode.Type to announce once the scene is ready, or -1.
+var _pending_coming_soon: int = -1
 
 @onready var _hud: Label = %Hud
 @onready var _save_warning: Label = %SaveWarning
@@ -63,6 +65,8 @@ func _ready() -> void:
 	_build_legend()
 	if _map != null:
 		_render()
+	if _pending_coming_soon >= 0:
+		show_coming_soon(_pending_coming_soon as MapNode.Type)
 
 
 func _process(delta: float) -> void:
@@ -94,9 +98,12 @@ func show_map(map: MapData, at: Vector2i, run: RunState) -> void:
 
 ## Opens the interim panel for a node type that has no screen yet (decision D7).
 func show_coming_soon(node_type: MapNode.Type) -> void:
+	if not is_node_ready():
+		_pending_coming_soon = node_type
+		return
 	_coming_soon_text.text = Strings.MAP_COMING_SOON_FORMAT % Strings.MAP_TYPE_NAME[node_type]
 	_coming_soon.visible = true
-	_coming_soon_continue.grab_focus()
+	_coming_soon_continue.grab_focus.call_deferred()
 
 
 func _render() -> void:

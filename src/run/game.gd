@@ -10,6 +10,7 @@ const RUN_FILE: String = "run.json"
 const TITLE_SCENE: String = "res://src/scenes/title/title.tscn"
 const MAP_SCENE: String = "res://src/scenes/map/map.tscn"
 const BATTLE_SCENE: String = "res://src/scenes/battle/battle.tscn"
+const REWARD_SCENE: String = "res://src/scenes/reward/reward.tscn"
 const DEFAULT_ENEMY_ID: StringName = &"sewer_rat"
 
 var run: RunState
@@ -21,6 +22,8 @@ var _battle_rngs: RngSet
 ## The action log of the battle in progress. It joins run.action_log only when the battle ends, so a
 ## reload mid-battle restarts it cleanly (arch §6).
 var _battle_entry: Dictionary = {}
+## The battle screen in progress, read once when it finishes.
+var _battle: BattleScene
 
 
 func _ready() -> void:
@@ -64,6 +67,8 @@ func goto(node_state: RunState.NodeState) -> void:
 			_enter_map()
 		RunState.NodeState.BATTLE:
 			_enter_battle()
+		RunState.NodeState.REWARD:
+			_enter_reward()
 		_:
 			push_error("no scene for %s yet" % RunState.NodeState.keys()[node_state])
 			_enter_map()
@@ -103,11 +108,33 @@ func _start_run(run_seed: String) -> void:
 	run_changed.emit()
 
 
-func _enter_map() -> void:
+## Enters [param node] through RunRules: the enemy is drawn from the battle stream, then the
+## matching screen opens. A node without a screen yet (or an enemy not in the content yet) shows
+## the D7 "coming soon" panel on the map. The dev console's goto and node use this too.
+func enter_node(node: MapNode) -> void:
+	var rngs: RngSet = _run_rngs()
+	var entry: RunRules.NodeEntry = RunRules.enter_node(run, node, db, rngs.battle)
+	run.rng_states = rngs.to_states()
+	run.position = entry.position
+	if entry.node_state == RunState.NodeState.BATTLE and db.enemy(entry.enemy_id) != null:
+		# "entered" survives a reload so the log tells Replay to redraw this enemy.
+		run.node_payload = {"enemy": String(entry.enemy_id), "entered": true}
+		goto(RunState.NodeState.BATTLE)
+		return
+	run.node_state = RunState.NodeState.MAP
+	_enter_map(node.type)
+	save_now()
+	run_changed.emit()
+
+
+## Opens the map. [param coming_soon_type] is a MapNode.Type to announce as not built yet, or -1.
+func _enter_map(coming_soon_type: int = -1) -> void:
 	_ensure_map()
 	var map_scene: MapScene = _load_scene(MAP_SCENE) as MapScene
 	map_scene.show_map(run.map, run.position, run)
-	map_scene.node_chosen.connect(_on_node_chosen.bind(map_scene))
+	if coming_soon_type >= 0:
+		map_scene.show_coming_soon(coming_soon_type as MapNode.Type)
+	map_scene.node_chosen.connect(enter_node)
 	map_scene.coming_soon_closed.connect(goto.bind(RunState.NodeState.MAP))
 	_change_scene(map_scene)
 
@@ -116,23 +143,10 @@ func _enter_map() -> void:
 func _ensure_map() -> void:
 	if run.map != null and run.map.act == run.act:
 		return
-	var rngs: RngSet = RngSet.for_seed(run.run_seed)
-	rngs.apply_states(run.rng_states)
+	var rngs: RngSet = _run_rngs()
 	run.map = MapGen.generate(run.act, db.tuning(), rngs.map)
 	run.rng_states = rngs.to_states()
 	run.position = MapNavigation.start_position()
-
-
-func _on_node_chosen(node: MapNode, map_scene: MapScene) -> void:
-	run.position = node.cell()
-	if node.type == MapNode.Type.BATTLE:
-		# T011 picks real enemies; until then every battle node fights the default one.
-		run.node_payload = {"enemy": DEFAULT_ENEMY_ID}
-		goto(RunState.NodeState.BATTLE)
-		return
-	# Decision D7 interim: the other node types have no screen yet, so say so and come back.
-	save_now()
-	map_scene.show_coming_soon(node.type)
 
 
 func _enter_battle() -> void:
@@ -147,13 +161,42 @@ func _enter_battle() -> void:
 	var battle: BattleScene = _load_scene(BATTLE_SCENE) as BattleScene
 	battle.setup(enemy, BattleContext.from_run(run, db), _battle_rngs)
 	battle.speed = Settings.battle_speed
-	_battle_entry = ActionLog.battle_entry(run.position, enemy.id)
+	var entered: bool = run.node_payload.get("entered", false) == true
+	_battle_entry = ActionLog.battle_entry(run.position, enemy.id, entered)
 	battle.action_sent.connect(_on_action_sent)
 	# Deferred: at instant speed the battle finishes inside its own _input, and swapping the scene
 	# there would pull the battle out of the tree mid-call.
 	battle.battle_finished.connect(_on_battle_finished, CONNECT_DEFERRED)
 	battle.speed_changed.connect(_on_speed_changed)
+	_battle = battle
 	_change_scene(battle)
+
+
+func _enter_reward() -> void:
+	var reward: RunRules.Reward = RunRules.Reward.from_payload(run.node_payload, db)
+	if reward == null:
+		push_error("run is on REWARD without a readable reward; back to the map")
+		run.node_state = RunState.NodeState.MAP
+		run.node_payload = {}
+		_enter_map()
+		return
+	var reward_scene: RewardScene = _load_scene(REWARD_SCENE) as RewardScene
+	reward_scene.show_reward(reward, RunRules.owned_ids(run))
+	reward_scene.choice_made.connect(_on_reward_choice.bind(reward, reward_scene))
+	_change_scene(reward_scene)
+
+
+func _on_reward_choice(
+	choice: RunRules.RewardChoice, reward: RunRules.Reward, reward_scene: RewardScene
+) -> void:
+	if not RunRules.take_reward(run, reward, choice, db.tuning()):
+		reward_scene.show_loadout_full()
+		return
+	var pick: int = choice.index if choice.kind == RunRules.RewardChoice.Kind.MOVE else -1
+	if not run.action_log.is_empty():
+		var actions: Array = run.action_log[-1]["actions"]
+		actions.append({"kind": "reward", "pick": pick})
+	goto(RunState.NodeState.MAP)
 
 
 func _on_action_sent(action: PlayerAction) -> void:
@@ -162,11 +205,15 @@ func _on_action_sent(action: PlayerAction) -> void:
 
 func _on_battle_finished(outcome: BattleState.Outcome) -> void:
 	run.action_log.append(_battle_entry)
-	run.rng_states = _battle_rngs.to_states()
+	var state: BattleState = _battle.battle_state()
+	_battle = null
 	run.node_payload = {}
 	if outcome == BattleState.Outcome.WON:
-		goto(RunState.NodeState.MAP)
+		RunRules.finish_battle(run, state, db, [], _battle_rngs.reward)
+		run.rng_states = _battle_rngs.to_states()
+		goto(RunState.NodeState.REWARD)
 		return
+	run.rng_states = _battle_rngs.to_states()
 	abandon_run()
 
 
@@ -183,6 +230,13 @@ func _add_debug_layer() -> void:
 	add_child(layer)
 	layer.add_child((load("res://src/debug/debug_overlay.tscn") as PackedScene).instantiate())
 	layer.add_child((load("res://src/debug/dev_console.tscn") as PackedScene).instantiate())
+
+
+## The run's streams at their saved states. Each caller writes them back with to_states().
+func _run_rngs() -> RngSet:
+	var rngs: RngSet = RngSet.for_seed(run.run_seed)
+	rngs.apply_states(run.rng_states)
+	return rngs
 
 
 func _change_scene(scene: Node) -> void:

@@ -1,8 +1,9 @@
 class_name Replay
 extends RefCounted
 ## Rebuilds a run's battles from its seed and action log (decisions D38). Pure: it never touches
-## saves, Game, or the scene tree. M1 only verifies; T011 adds the node bookkeeping that Game does
-## between battles, here and in Game together.
+## saves, Game, or the scene tree. It repeats Game's bookkeeping in the same stream order: the act
+## map on the first entered node, RunRules.enter_node for entered battles, then finish_battle and
+## the reward pick after a win.
 
 ## Every event the replayed battles produced, in order. Kept up to the first error.
 var events: Array[BattleEvent] = []
@@ -38,12 +39,19 @@ func _play_entry(
 	if enemy == null:
 		error = "unknown enemy: %s" % enemy_id
 		return
+	if entry.get("entered", false) == true:
+		_enter(entry, entry_index, run, db, rngs, StringName(enemy_id))
+		if not error.is_empty():
+			return
 	var ctx: BattleContext = BattleContext.from_run(run, db)
 	var start: BattleStart = BattleRules.start(enemy, ctx, rngs.battle)
 	events.append_array(start.events)
 	var actions: Array = entry.get("actions", [])
 	for action_index: int in actions.size():
 		var action_entry: Dictionary = actions[action_index]
+		if str(action_entry.get("kind", "")) == "reward":
+			_take_reward(action_entry, entry_index, start.state, run, db, rngs)
+			return
 		var action: PlayerAction = ActionLog.from_dict(action_entry)
 		if action == null:
 			error = "bad action at entry %d index %d" % [entry_index, action_index]
@@ -56,3 +64,54 @@ func _play_entry(
 			)
 			return
 		events.append_array(action_events)
+
+
+## Generates the act map on first use, then enters the logged node the way Game.enter_node does.
+func _enter(
+	entry: Dictionary,
+	entry_index: int,
+	run: RunState,
+	db: ContentDb,
+	rngs: RngSet,
+	enemy_id: StringName
+) -> void:
+	if run.map == null:
+		run.map = MapGen.generate(run.act, db.tuning(), rngs.map)
+	var cell: Array = entry.get("node", [])
+	var node: MapNode = null
+	if cell.size() == 2:
+		var row: float = cell[0]
+		var col: float = cell[1]
+		node = run.map.node_at(int(row), int(col))
+	if node == null:
+		error = "no map node for entry %d" % entry_index
+		return
+	var entered: RunRules.NodeEntry = RunRules.enter_node(run, node, db, rngs.battle)
+	run.position = entered.position
+	if entered.enemy_id != enemy_id:
+		error = "entry %d enemy %s, replay drew %s" % [entry_index, enemy_id, entered.enemy_id]
+
+
+## Closes a won battle and applies the logged reward pick (-1 = skip).
+func _take_reward(
+	action_entry: Dictionary,
+	entry_index: int,
+	state: BattleState,
+	run: RunState,
+	db: ContentDb,
+	rngs: RngSet
+) -> void:
+	if state.outcome != BattleState.Outcome.WON:
+		error = "reward logged for a battle not won at entry %d" % entry_index
+		return
+	var reward: RunRules.Reward = RunRules.finish_battle(run, state, db, [], rngs.reward)
+	var pick_value: float = action_entry.get("pick", -1)
+	var pick: int = int(pick_value)
+	var choice: RunRules.RewardChoice = (
+		RunRules.RewardChoice.skip() if pick < 0 else RunRules.RewardChoice.move(pick)
+	)
+	if (
+		pick >= reward.move_offers.size()
+		or not RunRules.take_reward(run, reward, choice, db.tuning())
+	):
+		error = "reward pick %d does not apply at entry %d" % [pick, entry_index]
