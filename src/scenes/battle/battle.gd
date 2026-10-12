@@ -203,6 +203,8 @@ func _setup_move_buttons() -> void:
 ## item in one turn, or Smoke Bomb on an elite. The action label says why.
 func _send(action: PlayerAction) -> void:
 	_set_input_on(false)
+	# A phase banner stays up until the player acts again.
+	_banner.visible = false
 	var events: Array[BattleEvent] = BattleRules.apply(_state, action, _ctx, _rngs)
 	events_applied.emit(events)
 	if events.size() == 1 and events[0].kind == BattleEvent.Kind.ACTION_REJECTED:
@@ -338,6 +340,11 @@ func _on_event_played(event: BattleEvent, seconds: float) -> void:
 			_show_item_used(event)
 		BattleEvent.Kind.STATUS_CLEANSED:
 			_show_cleansed(event, seconds)
+		BattleEvent.Kind.PHASE_CHANGED:
+			_show_phase(event)
+		BattleEvent.Kind.ITEM_FOUND:
+			_action_label.text = Strings.ITEM_FOUND_FORMAT % _ctx.items[event.reason].display_name
+			_pouch_bar.show_pouch(_ctx.pouch, _ctx.items)
 		BattleEvent.Kind.RELIC_TRIGGERED:
 			_action_label.text = _relic_name(event.reason)
 		BattleEvent.Kind.DUE_CHANGED:
@@ -425,6 +432,16 @@ func _show_cleansed(event: BattleEvent, seconds: float) -> void:
 	var expired := BattleEvent.new(BattleEvent.Kind.STATUS_EXPIRED)
 	expired.status = event.status
 	_cat_panel.apply_event(expired, seconds)
+
+
+## A boss phase starts (D25): its banner, the new suit, until the next turn starts.
+func _show_phase(event: BattleEvent) -> void:
+	var banners: PackedStringArray = Strings.BOSS_BANNERS.get(event.reason, PackedStringArray())
+	if event.amount < banners.size():
+		_banner.text = banners[event.amount]
+		_banner.visible = true
+	_enemy_panel.set_suit(event.suit_to)
+	_enemy_token.color = Strings.suit_color(event.suit_to)
 
 
 func _show_banner(event: BattleEvent) -> void:

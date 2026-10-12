@@ -67,6 +67,8 @@ func _play_entry(
 		for event: BattleEvent in action_events:
 			if event.kind == BattleEvent.Kind.ITEM_USED:
 				run.pouch[event.amount] = &""
+			elif event.kind == BattleEvent.Kind.ITEM_FOUND:
+				run.pouch[event.amount] = event.reason
 	if start.state.outcome == BattleState.Outcome.FLED:
 		run.hp = start.state.cat.hp
 

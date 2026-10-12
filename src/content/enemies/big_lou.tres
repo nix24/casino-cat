@@ -1,0 +1,71 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://src/data/intent_data.gd" id="2_intent"]
+[ext_resource type="Script" uid="uid://cum8bbmmpwhi" path="res://src/data/boss_phase_data.gd" id="3_phase"]
+
+[sub_resource type="Resource" id="IntentData_lou_p1_0"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 10
+
+[sub_resource type="Resource" id="IntentData_lou_p1_1"]
+script = ExtResource("2_intent")
+kind = 2
+amount = 12
+
+[sub_resource type="Resource" id="IntentData_lou_p1_2"]
+script = ExtResource("2_intent")
+kind = 1
+amount = 6
+hits = 2
+
+[sub_resource type="Resource" id="IntentData_lou_p1_3"]
+script = ExtResource("2_intent")
+kind = 5
+amount = 15
+
+[sub_resource type="Resource" id="IntentData_lou_p2_0"]
+script = ExtResource("2_intent")
+kind = 6
+amount = 10
+
+[sub_resource type="Resource" id="IntentData_lou_p2_1"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 14
+
+[sub_resource type="Resource" id="IntentData_lou_p2_2"]
+script = ExtResource("2_intent")
+kind = 4
+status = &"weak"
+turns = 2
+
+[sub_resource type="Resource" id="IntentData_lou_p2_3"]
+script = ExtResource("2_intent")
+kind = 0
+amount = 14
+
+[sub_resource type="Resource" id="Phase_lou_1"]
+script = ExtResource("3_phase")
+hp_at_or_below_pct = 100
+suit = 0
+pattern = Array[ExtResource("2_intent")]([SubResource("IntentData_lou_p1_0"), SubResource("IntentData_lou_p1_1"), SubResource("IntentData_lou_p1_2"), SubResource("IntentData_lou_p1_3")])
+
+[sub_resource type="Resource" id="Phase_lou_2"]
+script = ExtResource("3_phase")
+hp_at_or_below_pct = 50
+suit = 1
+pattern = Array[ExtResource("2_intent")]([SubResource("IntentData_lou_p2_0"), SubResource("IntentData_lou_p2_1"), SubResource("IntentData_lou_p2_2"), SubResource("IntentData_lou_p2_3")])
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"big_lou"
+display_name = "Big Lou"
+act = 1
+tier = 2
+suit = 0
+max_hp = 120
+pattern = Array[ExtResource("2_intent")]([SubResource("IntentData_lou_p1_0"), SubResource("IntentData_lou_p1_1"), SubResource("IntentData_lou_p1_2"), SubResource("IntentData_lou_p1_3")])
+phases = Array[ExtResource("3_phase")]([SubResource("Phase_lou_1"), SubResource("Phase_lou_2")])
+signature_move_id = &"dumpster_dive"

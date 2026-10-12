@@ -42,7 +42,7 @@ static func preview_lines(move_data: MoveData, move_preview: MovePreview) -> Pac
 
 static func _effect_line(move_data: MoveData, move_preview: MovePreview) -> String:
 	match move_data.category:
-		MoveData.Category.BASIC:
+		MoveData.Category.BASIC, MoveData.Category.SIGNATURE:
 			var mult_text: String = Strings.mult(move_preview.triangle_mult)
 			return "%s → %d (%s)" % [_base_text(move_data), move_preview.damage, mult_text]
 		MoveData.Category.GAMBLE:

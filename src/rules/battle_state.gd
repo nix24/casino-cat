@@ -28,6 +28,8 @@ var acting_slot: int = 0
 var pending: GambleSession
 ## Turn the last pouch item was used on; one item per turn (PRD §8.3).
 var last_item_turn: int = -1
+## Current boss phase (index into enemy_data.phases). Phases only move forward.
+var phase: int = 0
 ## Indexes into enemy_data.overrides that already fired (once-only overrides, T018).
 var fired_overrides: Array[int] = []
 ## True when this turn's enemy action was an override, so the pattern step is retried next turn.

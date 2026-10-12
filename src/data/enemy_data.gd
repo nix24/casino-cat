@@ -19,6 +19,10 @@ enum Tier { NORMAL, ELITE, BOSS }
 @export var max_hp: int
 ## Intents in order. The pattern loops.
 @export var pattern: Array[IntentData] = []
+## Boss phases in HP order (PRD §9.4). Empty for non-bosses; phase 0's pattern equals `pattern`.
+@export var phases: Array[BossPhaseData] = []
+## The signature move the first kill unlocks (D27), or empty.
+@export var signature_move_id: StringName = &""
 ## Intents that replace the next pattern step when their condition holds (T018).
 @export var overrides: Array[IntentOverrideData] = []
 ## True if the enemy can be drawn for the first battle of a run (PRD §9.2).

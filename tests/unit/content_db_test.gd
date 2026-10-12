@@ -9,13 +9,23 @@ func test_load_all_finds_starter_content() -> void:
 	var db: ContentDb = ContentDb.load_all()
 	assert_eq(
 		_ids_of_moves(db.all_moves()),
-		[&"curl_up", &"loaded_paws", &"paw_roll", &"pounce", &"scratch", &"snake_eyes", &"swipe"],
+		[
+			&"curl_up",
+			&"dumpster_dive",
+			&"loaded_paws",
+			&"paw_roll",
+			&"pounce",
+			&"scratch",
+			&"snake_eyes",
+			&"swipe",
+		],
 		"move ids"
 	)
 	assert_eq(
 		_ids_of_enemies(db.all_enemies()),
 		[
 			&"alley_possum",
+			&"big_lou",
 			&"bouncer_bulldog",
 			&"card_sharp_weasel",
 			&"gutter_slug",
@@ -236,7 +246,7 @@ func test_enemies_for_act1_normal() -> void:
 		"act 1 normal"
 	)
 	assert_eq(db.enemies_for(2, EnemyData.Tier.NORMAL).size(), 0, "act 2 normal")
-	assert_eq(db.enemies_for(1, EnemyData.Tier.BOSS).size(), 0, "act 1 boss")
+	assert_eq(_ids_of_enemies(db.enemies_for(1, EnemyData.Tier.BOSS)), [&"big_lou"], "act 1 boss")
 
 
 func _validate(

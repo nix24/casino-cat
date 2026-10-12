@@ -64,7 +64,7 @@ static func apply(
 	events.append(move_event)
 	var cost: int = _mp_cost(state, move, instance, ctx)
 	_change_mp(state, ctx.tuning, BattleEvent.Actor.CAT, &"cost", -cost, events)
-	if move.category == MoveData.Category.BASIC:
+	if hits_directly(move):
 		events.append_array(
 			(
 				Hooks
@@ -77,7 +77,7 @@ static func apply(
 	state.last_move_id = move.id
 	if move.category == MoveData.Category.GAMBLE:
 		return _open_gamble(state, move, ctx, rngs.gamble, events)
-	_resolve_move(state, move, ctx, events)
+	_resolve_move(state, move, ctx, rngs.battle, events)
 	return _resolve_turn(state, move, ctx, events)
 
 
@@ -91,7 +91,7 @@ static func preview_move(state: BattleState, slot: int, ctx: BattleContext) -> M
 	preview.mp_cost = _mp_cost(state, move, instance, ctx)
 	preview.affordable = preview.mp_cost <= state.mp
 	preview.missing_mp = maxi(preview.mp_cost - state.mp, 0)
-	if move.category == MoveData.Category.BASIC:
+	if hits_directly(move):
 		var repeat_count: int = _next_repeat_count(state, move)
 		preview.hits = move.hits
 		preview.triangle_mult = Suit.damage_multiplier(suit_of(move, instance), state.enemy.suit)
@@ -229,6 +229,11 @@ static func _move_for_slot(state: BattleState, slot: int, ctx: BattleContext) ->
 	return move
 
 
+## True for moves that deal their base damage as hits: basic moves and signatures (PRD §5.5).
+static func hits_directly(move: MoveData) -> bool:
+	return move.category == MoveData.Category.BASIC or move.category == MoveData.Category.SIGNATURE
+
+
 ## Repeat tracker (PRD §4.4). Only basic moves stack. Any other use starts a new streak at 1.
 static func _next_repeat_count(state: BattleState, move: MoveData) -> int:
 	if move.category == MoveData.Category.BASIC and move.id == state.last_move_id:
@@ -238,10 +243,14 @@ static func _next_repeat_count(state: BattleState, move: MoveData) -> int:
 
 ## Basic moves hit for their damage, one hit per `hits`. Then the effects run in order.
 static func _resolve_move(
-	state: BattleState, move: MoveData, ctx: BattleContext, events: Array[BattleEvent]
+	state: BattleState,
+	move: MoveData,
+	ctx: BattleContext,
+	rng: SeededRng,
+	events: Array[BattleEvent]
 ) -> void:
 	var tuning: TuningData = ctx.tuning
-	if move.category == MoveData.Category.BASIC:
+	if hits_directly(move):
 		var instance: MoveInstance = state.equipped[state.acting_slot]
 		var amount: int = _player_hit_amount(state, move, instance, state.repeat_count, ctx)
 		for _hit: int in move.hits:
@@ -249,7 +258,10 @@ static func _resolve_move(
 			if state.enemy.hp <= 0:
 				break
 	for effect: EffectData in move.effects:
-		_resolve_effect(effect, state, tuning, events)
+		if effect.kind == EffectData.Kind.FIND_ITEM_CHANCE:
+			_find_item(effect.amount, ctx, rng, events)
+		else:
+			_resolve_effect(effect, state, tuning, events)
 
 
 static func _resolve_effect(
@@ -270,6 +282,26 @@ static func _resolve_effect(
 			_apply_status(recipient, effect.status, effect.turns, BattleEvent.Actor.CAT, events)
 		_:
 			assert(false, "effect kind %d is not implemented in T001" % effect.kind)
+
+
+## Dumpster Dive (PRD §9.4): with a free pouch slot, [param chance_pct]% to find a uniform random
+## item, drawn from the battle stream. A full pouch rolls nothing. Game copies the find into the
+## run's pouch on ITEM_FOUND.
+static func _find_item(
+	chance_pct: int, ctx: BattleContext, rng: SeededRng, events: Array[BattleEvent]
+) -> void:
+	var slot: int = ctx.pouch.find(&"")
+	if slot < 0 or ctx.item_pool.is_empty():
+		return
+	if rng.range_int(1, 100) > chance_pct:
+		return
+	var item: ItemData = ctx.item_pool[rng.range_int(0, ctx.item_pool.size() - 1)]
+	ctx.pouch[slot] = item.id
+	ctx.items[item.id] = item
+	var found := BattleEvent.new(BattleEvent.Kind.ITEM_FOUND)
+	found.reason = item.id
+	found.amount = slot
+	events.append(found)
 
 
 ## Per-hit damage for a basic move of the cat, using the repeat count for this use. BEFORE_MOVE
@@ -408,6 +440,7 @@ static func _resolve_turn(
 	# Backfire can take the cat to 0 before the enemy acts (PRD §6.0 rule 8).
 	if state.cat.hp <= 0:
 		return _finish(state, BattleState.Outcome.LOST, BattleEvent.Kind.BATTLE_LOST, events)
+	_check_phase(state, events)
 	_enemy_acts(state, ctx.tuning, events)
 	if state.cat.hp <= 0:
 		return _finish(state, BattleState.Outcome.LOST, BattleEvent.Kind.BATTLE_LOST, events)
@@ -522,6 +555,35 @@ static func _settle_due(
 # --- enemy action ------------------------------------------------------------------------------
 
 
+## Boss phases (PRD §9.4, D25): after the cat's move and before the enemy acts, the next phase
+## starts when HP × 100 <= threshold × max HP. It takes the phase suit and restarts at its first
+## intent, which the enemy performs this turn. Phases never go back.
+static func _check_phase(state: BattleState, events: Array[BattleEvent]) -> void:
+	var phases: Array[BossPhaseData] = state.enemy_data.phases
+	while state.phase + 1 < phases.size():
+		var next_phase: BossPhaseData = phases[state.phase + 1]
+		if state.enemy.hp * 100 > next_phase.hp_at_or_below_pct * state.enemy.max_hp:
+			return
+		state.phase += 1
+		var changed := BattleEvent.new(BattleEvent.Kind.PHASE_CHANGED, BattleEvent.Actor.ENEMY)
+		changed.reason = state.enemy_data.id
+		changed.amount = state.phase
+		changed.suit_from = state.enemy.suit
+		changed.suit_to = next_phase.suit
+		events.append(changed)
+		state.enemy.suit = next_phase.suit
+		state.intent_index = 0
+		state.next_intent = next_phase.pattern[0]
+		events.append(_intent_shown_event(state.next_intent))
+
+
+## The intents the enemy loops through now: its phase pattern, or its pattern.
+static func _pattern(state: BattleState) -> Array[IntentData]:
+	if state.enemy_data.phases.is_empty():
+		return state.enemy_data.pattern
+	return state.enemy_data.phases[state.phase].pattern
+
+
 ## The enemy performs the intent it showed at the end of last turn, unless an HP override replaces
 ## it (T018); the override is announced with its own INTENT_SHOWN first.
 static func _enemy_acts(state: BattleState, tuning: TuningData, events: Array[BattleEvent]) -> void:
@@ -627,9 +689,9 @@ static func _end_turn(
 
 	# An override took this turn's action, so the replaced pattern step comes up again (T018).
 	if not state.override_acted:
-		state.intent_index = (state.intent_index + 1) % state.enemy_data.pattern.size()
+		state.intent_index = (state.intent_index + 1) % _pattern(state).size()
 	state.override_acted = false
-	state.next_intent = state.enemy_data.pattern[state.intent_index]
+	state.next_intent = _pattern(state)[state.intent_index]
 	state.turn += 1
 	events.append(_turn_started_event(state.turn))
 	events.append(_intent_shown_event(state.next_intent))

@@ -7,6 +7,7 @@ extends Node
 signal run_changed
 
 const RUN_FILE: String = "run.json"
+const META_FILE: String = "meta.json"
 const TITLE_SCENE: String = "res://src/scenes/title/title.tscn"
 const MAP_SCENE: String = "res://src/scenes/map/map.tscn"
 const BATTLE_SCENE: String = "res://src/scenes/battle/battle.tscn"
@@ -14,10 +15,13 @@ const REWARD_SCENE: String = "res://src/scenes/reward/reward.tscn"
 const SHOP_SCENE: String = "res://src/scenes/shop/shop.tscn"
 const REST_SCENE: String = "res://src/scenes/rest/rest.tscn"
 const EVENT_SCENE: String = "res://src/scenes/event/event.tscn"
+const BOSS_REWARD_SCENE: String = "res://src/scenes/reward/boss_reward.tscn"
 const DEFAULT_ENEMY_ID: StringName = &"sewer_rat"
 
 var run: RunState
 var db: ContentDb
+## Progress kept across runs (arch §6): signature unlocks now, history and the compendium later.
+var meta: MetaState = MetaState.new()
 ## Owns every write to run.json. Its last_result tells the title and map when a save failed.
 var save_store: SaveStore = SaveStore.new()
 ## The streams of the battle in progress. Saved back into the run when the battle ends.
@@ -31,6 +35,7 @@ var _battle: BattleScene
 
 func _ready() -> void:
 	db = ContentDb.load_all()
+	_load_meta()
 	if OS.is_debug_build():
 		_add_debug_layer()
 
@@ -78,6 +83,8 @@ func goto(node_state: RunState.NodeState) -> void:
 			_enter_rest()
 		RunState.NodeState.EVENT:
 			_enter_event()
+		RunState.NodeState.BOSS_REWARD:
+			_enter_boss_reward()
 		_:
 			push_error("no scene for %s yet" % RunState.NodeState.keys()[node_state])
 			_enter_map()
@@ -103,6 +110,42 @@ func save_now() -> void:
 	save_store.write_json(RUN_FILE, run.to_dict())
 
 
+## Writes [member meta] to meta.json. A failed write is kept in save_store.last_result.
+func save_meta() -> void:
+	save_store.write_json(META_FILE, meta.to_dict())
+
+
+func _load_meta() -> void:
+	var saved: Dictionary = save_store.read_json(META_FILE)
+	if saved.is_empty():
+		return
+	var loaded: MetaState = MetaState.from_dict(saved)
+	if loaded != null:
+		meta = loaded
+
+
+func _enter_boss_reward() -> void:
+	var reward: RunRules.BossReward = RunRules.BossReward.from_payload(run.node_payload, db)
+	if reward == null:
+		push_error("run is on BOSS_REWARD without a readable reward; back to the map")
+		run.node_state = RunState.NodeState.MAP
+		run.node_payload = {}
+		_enter_map()
+		return
+	var scene: BossRewardScene = _load_scene(BOSS_REWARD_SCENE) as BossRewardScene
+	scene.show_reward(reward, db)
+	scene.relic_chosen.connect(_on_boss_relic_chosen.bind(reward))
+	_change_scene(scene)
+
+
+## Takes the boss reward, heals, and starts the next act (PRD §3.2), then autosaves on its map.
+func _on_boss_relic_chosen(relic_index: int, reward: RunRules.BossReward) -> void:
+	var rngs: RngSet = _run_rngs()
+	RunRules.take_boss_reward(run, reward, relic_index, db, rngs.map)
+	run.rng_states = rngs.to_states()
+	goto(RunState.NodeState.MAP)
+
+
 func _start_run(run_seed: String) -> void:
 	var seed_text: String = run_seed
 	if seed_text.is_empty():
@@ -121,6 +164,14 @@ func _start_run(run_seed: String) -> void:
 ## matching screen opens. A node without a screen yet (or an enemy not in the content yet) shows
 ## the D7 "coming soon" panel on the map. The dev console's goto and node use this too.
 func enter_node(node: MapNode) -> void:
+	if run.act > 1:
+		# D51: Act 2 content arrives in M4. Until then every Act 2 node is a placeholder.
+		run.position = node.cell()
+		run.node_state = RunState.NodeState.MAP
+		_enter_map(node.type)
+		save_now()
+		run_changed.emit()
+		return
 	var rngs: RngSet = _run_rngs()
 	var entry: RunRules.NodeEntry = RunRules.enter_node(run, node, db, rngs.battle)
 	run.rng_states = rngs.to_states()
@@ -320,6 +371,8 @@ func _on_battle_events(events: Array[BattleEvent]) -> void:
 	for event: BattleEvent in events:
 		if event.kind == BattleEvent.Kind.ITEM_USED:
 			run.pouch[event.amount] = &""
+		elif event.kind == BattleEvent.Kind.ITEM_FOUND:
+			run.pouch[event.amount] = event.reason
 
 
 func _on_action_sent(action: PlayerAction) -> void:
@@ -331,8 +384,14 @@ func _on_battle_finished(outcome: BattleState.Outcome) -> void:
 	var state: BattleState = _battle.battle_state()
 	_battle = null
 	run.node_payload = {}
+	if outcome == BattleState.Outcome.WON and state.enemy_data.tier == EnemyData.Tier.BOSS:
+		RunRules.finish_boss(run, state, db, meta, _battle_rngs.reward)
+		run.rng_states = _battle_rngs.to_states()
+		save_meta()
+		goto(RunState.NodeState.BOSS_REWARD)
+		return
 	if outcome == BattleState.Outcome.WON:
-		RunRules.finish_battle(run, state, db, [], _battle_rngs.reward)
+		RunRules.finish_battle(run, state, db, meta.unlocked_signatures, _battle_rngs.reward)
 		run.rng_states = _battle_rngs.to_states()
 		goto(RunState.NodeState.REWARD)
 		return

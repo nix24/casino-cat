@@ -16,6 +16,8 @@ extends RefCounted
 ## - DUE_CHANGED: reason is the gamble family, amount the new pip count.
 ## - RELIC_TRIGGERED: reason is the relic id (T013).
 ## - ITEM_USED: reason is the item id, amount the pouch slot (T014). STATUS_CLEANSED: status.
+## - PHASE_CHANGED: reason = boss id, amount = new phase index, suit_from/suit_to (T019).
+## - ITEM_FOUND: reason = item id, amount = pouch slot it went into (Dumpster Dive, T019).
 ## - SUIT_OVERRIDE_EXPIRED: Laser Pointer ended; a SUIT_SHIFTED (actor ENEMY) follows.
 ## - REROLLS_CHANGED: amount is the rerolls left. Gamble detail lives in `gamble` (T002).
 
@@ -50,6 +52,8 @@ enum Kind {
 	STATUS_CLEANSED,
 	FLED,
 	SUIT_OVERRIDE_EXPIRED,
+	PHASE_CHANGED,
+	ITEM_FOUND,
 }
 enum Actor { CAT, ENEMY }
 

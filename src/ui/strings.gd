@@ -15,6 +15,16 @@ const ATTACK_GLYPH: String = "⚔"
 const SHIELD_GLYPH: String = "🛡"
 const DEBUFF_GLYPH: String = "▼"
 const NO_STATUS_TEXT: String = "—"
+## Boss phase banners by boss id, indexed by phase (D25). Phase 0 has no banner.
+const BOSS_BANNERS: Dictionary[StringName, PackedStringArray] = {
+	&"big_lou": ["", "Lou gets sentimental."],
+}
+const BOSS_REWARD_TITLE: String = "Boss down"
+const BOSS_REWARD_SIGNATURE_FORMAT: String = "Signature unlocked: %s"
+const BOSS_REWARD_TAKE_FORMAT: String = "Take %s (%s)"
+const BOSS_REWARD_SKIP_FORMAT: String = "Skip (+%d Purrls)"
+const BOSS_REWARD_NEXT_ACT: String = "Then heal 50% and head for the next act."
+const ITEM_FOUND_FORMAT: String = "Found %s!"
 ## Special intents by special_id (PRD §9.3).
 const SPECIAL_INTENT_TEXT: Dictionary[StringName, String] = {
 	&"cheat_suit": "★ Cheat: takes the suit that beats yours",

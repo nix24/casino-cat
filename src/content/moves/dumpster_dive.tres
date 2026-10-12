@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" path="res://src/data/move_data.gd" id="1_move"]
+[ext_resource type="Script" uid="uid://4ldioplohfg4" path="res://src/data/effect_data.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="EffectData_dive_find"]
+script = ExtResource("2_effect")
+kind = 15
+amount = 30
+
+[resource]
+script = ExtResource("1_move")
+id = &"dumpster_dive"
+display_name = "Dumpster Dive"
+suit = 0
+category = 3
+rarity = 4
+base_damage = 12
+hits = 1
+mp_cost = 0
+effects = Array[ExtResource("2_effect")]([SubResource("EffectData_dive_find")])
+description = "Deal {damage} damage. {find_chance_pct}% to find a pouch item if a slot is free."
+flavor = "Lou's trash is my treasure."

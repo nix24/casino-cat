@@ -17,6 +17,8 @@ var modifiers: Dictionary[StringName, ModifierData] = {}
 ## ITEM_USED, D34), and the item content they name.
 var pouch: Array[StringName] = []
 var items: Dictionary[StringName, ItemData] = {}
+## Every pouch item, for finds such as Dumpster Dive (T019).
+var item_pool: Array[ItemData] = []
 ## Luck from relics and other sources, added to every gamble's Luck. 0 until T013.
 var luck_bonus: int = 0
 ## Faces the next gamble's dice draw before the RNG, in order. Consumed when that gamble opens.
@@ -47,6 +49,7 @@ static func from_run(run: RunState, db: ContentDb) -> BattleContext:
 			assert(modifier != null, "run loadout has an unknown modifier: %s" % modifier_id)
 			ctx.modifiers[modifier_id] = modifier
 	ctx.pouch = run.pouch.duplicate()
+	ctx.item_pool = db.all_items()
 	for item_id: StringName in run.pouch:
 		if item_id != &"":
 			var item: ItemData = db.item(item_id)

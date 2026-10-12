@@ -47,6 +47,8 @@ const DURATIONS: Dictionary[BattleEvent.Kind, float] = {
 	BattleEvent.Kind.STATUS_CLEANSED: 0.25,
 	BattleEvent.Kind.FLED: 0.6,
 	BattleEvent.Kind.SUIT_OVERRIDE_EXPIRED: 0.0,
+	BattleEvent.Kind.PHASE_CHANGED: 0.8,
+	BattleEvent.Kind.ITEM_FOUND: 0.3,
 }
 
 ## 0 = 1×, 1 = 2×, 2 = instant. BattleScene sets it before the first enqueue.

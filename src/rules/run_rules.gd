@@ -14,6 +14,11 @@ enum AttachResult {
 ## The first battle of every run comes from this pool's enemies (PRD §9.2): act 1, row 1.
 const FIRST_BATTLE_ACT: int = 1
 const FIRST_BATTLE_ROW: int = 1
+## Boss Purrls by act (PRD §10.6); the act 3 boss ends the run instead (T020).
+const BOSS_PURRLS: Array[int] = [70, 90, 0]
+const BOSS_RELIC_OFFERS: int = 3
+## Purrls for skipping the boss relic (PRD §3.2).
+const BOSS_SKIP_PURRLS: int = 40
 ## Modifier slots per move (PRD §8.1).
 const MODIFIER_SLOTS: int = 2
 ## Suits Re-suited can choose (PRD §8.1: ♠/♥/♦; utility ♣ is not offered).
@@ -82,6 +87,40 @@ class Reward:
 				push_warning("run.json node_payload: unknown offer %s" % move_id)
 				return null
 			reward.move_offers.append(move_data)
+		return reward
+
+
+## What beating a boss pays (PRD §3.2, §10.6): Purrls, 1 of 3 relics or +40 Purrls, and the
+## signature on the first kill. Saved in run.node_payload while the screen is open.
+class BossReward:
+	extends RefCounted
+	var purrls: int = 0
+	var relic_offers: Array[RelicData] = []
+	## The signature granted by this kill, or empty when it was already unlocked.
+	var signature_id: StringName = &""
+
+	func to_payload() -> Dictionary:
+		var relic_ids: Array[String] = []
+		for relic: RelicData in relic_offers:
+			relic_ids.append(String(relic.id))
+		return {"purrls": purrls, "relics": relic_ids, "signature": String(signature_id)}
+
+	## Rebuilds a reward saved with to_payload. Null (after a warning) on a bad shape.
+	static func from_payload(payload: Dictionary, db: ContentDb) -> BossReward:
+		var reader := SaveReader.new(payload, "run.json node_payload")
+		var reward := BossReward.new()
+		reward.purrls = reader.int_at("purrls")
+		var relic_ids: Array[StringName] = reader.ids_at("relics")
+		reward.signature_id = StringName(reader.string_at("signature"))
+		if not reader.ok():
+			reader.warn()
+			return null
+		for relic_id: StringName in relic_ids:
+			var relic: RelicData = db.relic(relic_id)
+			if relic == null:
+				push_warning("run.json node_payload: unknown relic %s" % relic_id)
+				return null
+			reward.relic_offers.append(relic)
 		return reward
 
 
@@ -380,6 +419,58 @@ static func reroll_shop(
 	)
 	fresh["rerolls"] = done + 1
 	return fresh
+
+
+## Closes a won boss battle (PRD §3.2, §12.1): the cat keeps its HP, the signature is granted and
+## unlocked on the first kill only (D27 placement), and 3 distinct unowned relics are drawn
+## uniformly from [param rng] (the reward stream, D30). Leaves the run on BOSS_REWARD.
+static func finish_boss(
+	run: RunState, state: BattleState, db: ContentDb, meta: MetaState, rng: SeededRng
+) -> BossReward:
+	assert(state.outcome == BattleState.Outcome.WON, "finish_boss is for won battles only")
+	run.stats.turns += state.turn
+	run.stats.damage_dealt += state.enemy.max_hp - state.enemy.hp
+	run.stats.damage_taken += maxi(0, run.hp - state.cat.hp)
+	run.hp = state.cat.hp
+	var reward := BossReward.new()
+	reward.purrls = BOSS_PURRLS[run.act - 1]
+	var signature: StringName = state.enemy_data.signature_move_id
+	if signature != &"" and meta.unlock_signature(signature):
+		reward.signature_id = signature
+		learn_move(run, signature, db.tuning())
+	var pool: Array[RelicData] = db.all_relics().filter(
+		func(relic: RelicData) -> bool: return not run.relics.has(relic.id)
+	)
+	while reward.relic_offers.size() < BOSS_RELIC_OFFERS and not pool.is_empty():
+		reward.relic_offers.append(pool.pop_at(rng.range_int(0, pool.size() - 1)))
+	run.node_state = RunState.NodeState.BOSS_REWARD
+	run.node_payload = reward.to_payload()
+	return reward
+
+
+## Takes relic [param relic_index] (or -1 to skip for +40 Purrls), pays the boss Purrls, heals 50%
+## of max HP (round half up, D15), then starts the next act with [param map_rng] (PRD §3.2).
+static func take_boss_reward(
+	run: RunState, reward: BossReward, relic_index: int, db: ContentDb, map_rng: SeededRng
+) -> void:
+	if relic_index >= 0 and relic_index < reward.relic_offers.size():
+		gain_relic(run, reward.relic_offers[relic_index])
+	else:
+		run.purrls += BOSS_SKIP_PURRLS
+	run.purrls += reward.purrls
+	var heal: int = floori(run.max_hp * db.tuning().act_heal_pct / 100.0 + 0.5)
+	run.hp = mini(run.max_hp, run.hp + heal)
+	start_act(run, db, map_rng)
+
+
+## Moves the run to the next act: its map from [param map_rng] (the map stream), the cat before
+## row 1, back on the map.
+static func start_act(run: RunState, db: ContentDb, map_rng: SeededRng) -> void:
+	run.act += 1
+	run.map = MapGen.generate(run.act, db.tuning(), map_rng)
+	run.position = Vector2i.ZERO
+	run.node_state = RunState.NodeState.MAP
+	run.node_payload = {}
 
 
 ## Finishes the rest site with a Nap (target_slot ignored) or Practice on equipped
