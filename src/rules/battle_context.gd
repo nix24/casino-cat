@@ -13,6 +13,10 @@ var due: Dictionary[StringName, int] = {}
 ## The run's relics in acquisition order, and every modifier the loadout uses, by id (T013).
 var relics: Array[RelicData] = []
 var modifiers: Dictionary[StringName, ModifierData] = {}
+## Pouch item ids by slot, "" for empty (a battle-local copy; Game clears the run's slot on
+## ITEM_USED, D34), and the item content they name.
+var pouch: Array[StringName] = []
+var items: Dictionary[StringName, ItemData] = {}
 ## Luck from relics and other sources, added to every gamble's Luck. 0 until T013.
 var luck_bonus: int = 0
 ## Faces the next gamble's dice draw before the RNG, in order. Consumed when that gamble opens.
@@ -42,6 +46,12 @@ static func from_run(run: RunState, db: ContentDb) -> BattleContext:
 			var modifier: ModifierData = db.modifier(modifier_id)
 			assert(modifier != null, "run loadout has an unknown modifier: %s" % modifier_id)
 			ctx.modifiers[modifier_id] = modifier
+	ctx.pouch = run.pouch.duplicate()
+	for item_id: StringName in run.pouch:
+		if item_id != &"":
+			var item: ItemData = db.item(item_id)
+			assert(item != null, "run pouch has an unknown item: %s" % item_id)
+			ctx.items[item_id] = item
 	for relic_id: StringName in run.relics:
 		var relic: RelicData = db.relic(relic_id)
 		assert(relic != null, "run has an unknown relic: %s" % relic_id)

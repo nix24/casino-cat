@@ -47,7 +47,20 @@ static func backfire_cap(state: BattleState, ctx: BattleContext) -> int:
 ## The odds the player sees for [param gamble] right now, after Luck and statuses (PRD §6.0 rule 2).
 static func preview(gamble: GambleData, state: BattleState, ctx: BattleContext) -> GambleOdds:
 	var luck_now: int = luck(gamble.family, state, ctx)
-	return odds(gamble, luck_now, status_mult(state), backfire_cap(state, ctx))
+	var table: GambleOdds = odds(gamble, luck_now, status_mult(state), backfire_cap(state, ctx))
+	if state.guarantee_top_tier:
+		_guarantee_top(table)
+	return table
+
+
+## Lucky Charm (PRD §8.3): the best-paying row becomes certain, so the shown odds stay true.
+static func _guarantee_top(table: GambleOdds) -> void:
+	var top: GambleOddsRow = table.rows[0]
+	for row: GambleOddsRow in table.rows:
+		if row.payout > top.payout:
+			top = row
+	for row: GambleOddsRow in table.rows:
+		row.probability = 1.0 if row == top else 0.0
 
 
 ## Exact outcome table for [param gamble] at a fixed Luck and payout multiplier.

@@ -106,6 +106,27 @@ func test_action_sent_once_per_accepted_move() -> void:
 	_close_battle(scene)
 
 
+func test_pouch_item_use_empties_the_slot() -> void:
+	var db := ContentDb.load_all()
+	var run := RunState.start("KITTY-7731", db.tuning())
+	run.pouch[0] = &"fish_snack"
+	var scene := (load(BATTLE_PATH) as PackedScene).instantiate() as BattleScene
+	scene.speed = EventPlayer.SPEED_INSTANT
+	var ctx := BattleContext.from_run(run, db)
+	scene.setup(db.enemy(&"sewer_rat"), ctx, RngSet.for_seed("KITTY-7731"))
+	_root().add_child(scene)
+	var bar := scene.get_node("%Pouch") as PouchBar
+	var slot_button := bar.find_child("Slot1", true, false) as Button
+
+	assert_true(not slot_button.disabled, "a filled slot is enabled")
+	assert_eq(slot_button.text, "FS", "the slot shows the item's initials")
+	bar.item_chosen.emit(0, 0)
+	assert_eq(ctx.pouch[0], &"", "the slot empties")
+	assert_eq(slot_button.text, Strings.POUCH_EMPTY, "the bar redraws the empty slot")
+	assert_true(slot_button.disabled, "an empty slot is disabled")
+	_close_battle(scene)
+
+
 # --- helpers ---------------------------------------------------------------------------------
 
 

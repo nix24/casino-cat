@@ -34,13 +34,21 @@ class Reward:
 	var purrls: int = 0
 	var move_offers: Array[MoveData] = []
 	var item_drop: bool = false
+	## The dropped pouch item, or empty.
+	var item_id: StringName = &""
 	var elite: bool = false
 
 	func to_payload() -> Dictionary:
 		var offer_ids: Array[String] = []
 		for move_data: MoveData in move_offers:
 			offer_ids.append(String(move_data.id))
-		return {"purrls": purrls, "offers": offer_ids, "item_drop": item_drop, "elite": elite}
+		return {
+			"purrls": purrls,
+			"offers": offer_ids,
+			"item_drop": item_drop,
+			"item_id": String(item_id),
+			"elite": elite,
+		}
 
 	## Rebuilds a reward saved with to_payload. Null (after a warning) on a bad shape or an
 	## offer id the content no longer has.
@@ -56,6 +64,15 @@ class Reward:
 			return null
 		reward.item_drop = drop_value
 		reward.elite = elite_value
+		var item_value: Variant = payload.get("item_id", "")
+		if not item_value is String:
+			push_warning("run.json node_payload: item_id: wrong type")
+			return null
+		var item_text: String = item_value
+		if item_text != "" and db.item(StringName(item_text)) == null:
+			push_warning("run.json node_payload: unknown item %s" % item_text)
+			return null
+		reward.item_id = StringName(item_text)
 		for move_id: StringName in offer_ids:
 			var move_data: MoveData = db.move(move_id)
 			if move_data == null:
@@ -72,6 +89,8 @@ class RewardChoice:
 	var kind: Kind = Kind.SKIP
 	## Index into Reward.move_offers when kind is MOVE.
 	var index: int = -1
+	## Pouch slot the dropped item goes into (replacing what is there), or -1 to leave it.
+	var item_slot: int = -1
 
 	static func move(offer_index: int) -> RewardChoice:
 		var choice := RewardChoice.new()
@@ -131,6 +150,8 @@ static func finish_battle(
 	reward.elite = state.enemy_data.tier == EnemyData.Tier.ELITE
 	reward.purrls = RewardRules.purrls(run.act, reward.elite, rng)
 	reward.item_drop = RewardRules.item_drops(reward.elite, rng)
+	if reward.item_drop:
+		reward.item_id = RewardRules.drop_item(db.all_items(), rng)
 	reward.move_offers = RewardRules.offer_moves(
 		RewardRules.reward_pool(db.all_moves(), unlocked_signatures), owned_ids(run), rng
 	)
@@ -150,6 +171,8 @@ static func take_reward(
 			return false
 	else:
 		run.purrls += RewardRules.SKIP_BONUS
+	if reward.item_id != &"" and choice.item_slot >= 0 and choice.item_slot < run.pouch.size():
+		run.pouch[choice.item_slot] = reward.item_id
 	run.purrls += reward.purrls
 	run.node_state = RunState.NodeState.MAP
 	run.node_payload = {}

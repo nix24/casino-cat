@@ -28,12 +28,19 @@ var _statuses: Dictionary[StringName, int] = {}
 ## Sets the card for a fresh battle at full HP. [param show_mp] is true for the cat only; an enemy
 ## shows its intent instead.
 func setup(
-	display_name: String, suit: Suit.Type, max_hp: int, show_mp: bool, mp: int, mp_max: int
+	display_name: String,
+	suit: Suit.Type,
+	max_hp: int,
+	show_mp: bool,
+	mp: int,
+	mp_max: int,
+	hp: int = -1
 ) -> void:
 	_name_label.text = display_name
 	_max_hp = max_hp
 	_hp_bar.max_value = max_hp
-	_set_hp(max_hp, 0.0)
+	# The cat carries its HP between battles (T011), so it may start below max.
+	_set_hp(max_hp if hp < 0 else hp, 0.0)
 	set_suit(suit)
 	_intent_label.visible = not show_mp
 	_mp_row.visible = show_mp

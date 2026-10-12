@@ -5,7 +5,7 @@ extends Control
 ## plays the returned BattleEvents through EventPlayer, so every number on screen comes from an
 ## event.
 
-## Emitted after BATTLE_WON or BATTLE_LOST has played. Game listens and moves the run on.
+## Emitted after BATTLE_WON, BATTLE_LOST, or FLED has played. Game listens and moves the run on.
 signal battle_finished(outcome: BattleState.Outcome)
 ## Emitted with the events of each action the player sends, before they play (decisions D36).
 signal events_applied(events: Array[BattleEvent])
@@ -46,6 +46,7 @@ var _cat_attack_suit: Suit.Type = Suit.Type.CLUBS
 @onready var _speed_label: Label = %SpeedLabel
 @onready var _move_odds: OddsTable = %MoveOdds
 @onready var _dice_overlay: DiceOverlay = %DiceOverlay
+@onready var _pouch_bar: PouchBar = %Pouch
 @onready var _popups: Control = %Popups
 @onready var _move_buttons: Array[MoveButton] = [
 	%Move1 as MoveButton, %Move2 as MoveButton, %Move3 as MoveButton, %Move4 as MoveButton
@@ -78,6 +79,8 @@ func _ready() -> void:
 	_state = start.state
 	_setup_panels()
 	_setup_move_buttons()
+	_pouch_bar.show_pouch(_ctx.pouch, _ctx.items)
+	_pouch_bar.item_chosen.connect(_on_item_chosen)
 	_event_player.event_played.connect(_on_event_played)
 	_event_player.skipped.connect(_on_skipped)
 	_event_player.queue_finished.connect(_on_queue_finished)
@@ -116,9 +119,24 @@ func _input(event: InputEvent) -> void:
 				use_move(slot)
 				get_viewport().set_input_as_handled()
 				return
+		if event.is_action_pressed(&"open_pouch") and _pouch_bar.focus_first_item():
+			get_viewport().set_input_as_handled()
+			return
 	if event.is_action_pressed(&"open_info"):
 		_toggle_odds()
 		get_viewport().set_input_as_handled()
+
+
+## Back (Esc, B) from the pouch returns focus to the move row. The pouch bar takes the press first
+## while its suit picker is open.
+func _unhandled_input(event: InputEvent) -> void:
+	if not _is_input_on or not event.is_action_pressed(&"ui_cancel"):
+		return
+	var focus_owner: Control = get_viewport().gui_get_focus_owner()
+	if focus_owner == null or not _pouch_bar.is_ancestor_of(focus_owner):
+		return
+	_move_buttons[_last_slot].grab_focus()
+	get_viewport().set_input_as_handled()
 
 
 func _is_skip_press(event: InputEvent) -> bool:
@@ -139,7 +157,15 @@ func _build_context() -> BattleContext:
 
 func _setup_panels() -> void:
 	_enemy_panel.setup(enemy_data.display_name, enemy_data.suit, enemy_data.max_hp, false, 0, 0)
-	_cat_panel.setup("Cat", _state.cat.suit, _state.cat.max_hp, true, _state.mp, _ctx.tuning.mp_max)
+	_cat_panel.setup(
+		"Cat",
+		_state.cat.suit,
+		_state.cat.max_hp,
+		true,
+		_state.mp,
+		_ctx.tuning.mp_max,
+		_state.cat.hp
+	)
 	_cat_panel.set_mp_ticks(_gamble_costs())
 	_enemy_token.color = Strings.suit_color(enemy_data.suit)
 	_cat_token.color = Strings.suit_color(_state.cat.suit)
@@ -173,14 +199,23 @@ func _setup_move_buttons() -> void:
 
 
 ## Applies [param action] to the rules and queues the events it returns. A lone ACTION_REJECTED
-## only warns and turns input back on, because the UI should never send one.
+## turns input back on. A move is never rejected, so that only warns. A pouch item can be: a second
+## item in one turn, or Smoke Bomb on an elite. The action label says why.
 func _send(action: PlayerAction) -> void:
 	_set_input_on(false)
 	var events: Array[BattleEvent] = BattleRules.apply(_state, action, _ctx, _rngs)
 	events_applied.emit(events)
 	if events.size() == 1 and events[0].kind == BattleEvent.Kind.ACTION_REJECTED:
-		push_warning("action rejected: %s" % events[0].reason)
+		var reason: StringName = events[0].reason
+		match reason:
+			&"item_already_used":
+				_action_label.text = Strings.POUCH_ITEM_ALREADY_USED
+			&"smoke_bomb_not_normal":
+				_action_label.text = Strings.POUCH_NOT_ON_ELITES
+			_:
+				push_warning("action rejected: %s" % reason)
 		_set_input_on(true)
+		_move_buttons[_last_slot].grab_focus()
 		return
 	action_sent.emit(action)
 	_event_player.enqueue(events)
@@ -217,6 +252,7 @@ func debug_sync() -> void:
 
 func _set_input_on(is_on: bool) -> void:
 	_is_input_on = is_on
+	_pouch_bar.set_enabled(is_on)
 	if not is_on:
 		_hide_odds()
 	for slot: int in _ctx.loadout.size():
@@ -232,6 +268,16 @@ func _refresh_previews() -> void:
 func _apply_speed() -> void:
 	_event_player.speed = speed
 	_speed_label.text = Strings.speed_text(speed)
+
+
+func _on_item_chosen(slot: int, choice: int) -> void:
+	if not _is_input_on:
+		return
+	var action := PlayerAction.new()
+	action.kind = PlayerAction.Kind.USE_ITEM
+	action.pouch_slot = slot
+	action.choice = choice
+	_send(action)
 
 
 func _on_dice_confirmed(reroll_dice: PackedInt32Array) -> void:
@@ -287,15 +333,19 @@ func _on_event_played(event: BattleEvent, seconds: float) -> void:
 		BattleEvent.Kind.MP_CHANGED:
 			_cat_panel.apply_event(event, seconds)
 		BattleEvent.Kind.SUIT_SHIFTED:
-			_cat_panel.set_suit(event.suit_to)
-			_cat_token.color = Strings.suit_color(event.suit_to)
+			_show_suit_shifted(event)
+		BattleEvent.Kind.ITEM_USED:
+			_show_item_used(event)
+		BattleEvent.Kind.STATUS_CLEANSED:
+			_show_cleansed(event, seconds)
 		BattleEvent.Kind.RELIC_TRIGGERED:
 			_action_label.text = _relic_name(event.reason)
 		BattleEvent.Kind.DUE_CHANGED:
 			_due_label.text = Strings.due_text(event.amount, _ctx.tuning.due_pips_max)
-		BattleEvent.Kind.BATTLE_WON, BattleEvent.Kind.BATTLE_LOST:
+		BattleEvent.Kind.BATTLE_WON, BattleEvent.Kind.BATTLE_LOST, BattleEvent.Kind.FLED:
 			_show_banner(event)
-		# BATTLE_STARTED, TURN_STARTED, GAMBLE_AWAITING_CHOICE, and ACTION_REJECTED show nothing.
+		# BATTLE_STARTED, TURN_STARTED, GAMBLE_AWAITING_CHOICE, ACTION_REJECTED, and
+		# SUIT_OVERRIDE_EXPIRED show nothing.
 		_:
 			_on_gamble_event(event)
 
@@ -355,8 +405,36 @@ func _show_backfire(event: BattleEvent, seconds: float) -> void:
 	_popup_on(_cat_panel, "−%d" % event.amount, Strings.BACKFIRE_COLOR, seconds)
 
 
+func _show_suit_shifted(event: BattleEvent) -> void:
+	if event.actor == BattleEvent.Actor.ENEMY:
+		_enemy_panel.set_suit(event.suit_to)
+		_enemy_token.color = Strings.suit_color(event.suit_to)
+		return
+	_cat_panel.set_suit(event.suit_to)
+	_cat_token.color = Strings.suit_color(event.suit_to)
+
+
+## The rules already emptied the slot, so the bar redraws from the context.
+func _show_item_used(event: BattleEvent) -> void:
+	_action_label.text = _ctx.items[event.reason].display_name
+	_pouch_bar.show_pouch(_ctx.pouch, _ctx.items)
+
+
+## A cleansed status leaves the cat the way an expired one does, so the panel takes it as expiry.
+func _show_cleansed(event: BattleEvent, seconds: float) -> void:
+	var expired := BattleEvent.new(BattleEvent.Kind.STATUS_EXPIRED)
+	expired.status = event.status
+	_cat_panel.apply_event(expired, seconds)
+
+
 func _show_banner(event: BattleEvent) -> void:
-	_banner.text = "Won" if event.kind == BattleEvent.Kind.BATTLE_WON else "Lost"
+	match event.kind:
+		BattleEvent.Kind.BATTLE_WON:
+			_banner.text = "Won"
+		BattleEvent.Kind.FLED:
+			_banner.text = Strings.BATTLE_FLED
+		_:
+			_banner.text = "Lost"
 	_banner.visible = true
 	# The battle is over, so the enemy no longer has a next action to show.
 	_enemy_panel.set_intent("")

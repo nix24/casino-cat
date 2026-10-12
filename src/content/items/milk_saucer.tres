@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" uid="uid://13vw4q4o1nhy" path="res://src/data/item_data.gd" id="1_item"]
+[ext_resource type="Script" uid="uid://4ldioplohfg4" path="res://src/data/effect_data.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="EffectData_milk_saucer_0"]
+script = ExtResource("2_effect")
+kind = 1
+amount = 8
+
+[sub_resource type="Resource" id="EffectData_milk_saucer_1"]
+script = ExtResource("2_effect")
+kind = 4
+amount = 15
+
+[resource]
+script = ExtResource("1_item")
+id = &"milk_saucer"
+display_name = "Milk Saucer"
+price = 30
+effects = Array[ExtResource("2_effect")]([SubResource("EffectData_milk_saucer_0"), SubResource("EffectData_milk_saucer_1")])
+description = "Heal 8 and gain 15 MP."

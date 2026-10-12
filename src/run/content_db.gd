@@ -1,13 +1,14 @@
 class_name ContentDb
 extends RefCounted
 ## Every content resource the game loads, looked up by id (arch §2). Moves, enemies, relics,
-## modifiers, and tuning load here; items and events join with their classes (T014, T017).
+## modifiers, items, and tuning load here; events join with their class (T017).
 ## Pools are copies sorted by id, so callers never see directory order or the store.
 
 const MOVES_DIR: String = "res://src/content/moves"
 const ENEMIES_DIR: String = "res://src/content/enemies"
 const RELICS_DIR: String = "res://src/content/relics"
 const MODIFIERS_DIR: String = "res://src/content/modifiers"
+const ITEMS_DIR: String = "res://src/content/items"
 const TUNING_PATH: String = "res://src/content/tuning.tres"
 
 ## Statuses from PRD §4.7. Any other status on an effect or intent is a content typo.
@@ -38,6 +39,7 @@ var _moves: Array[MoveData] = []
 var _enemies: Array[EnemyData] = []
 var _relics: Array[RelicData] = []
 var _modifiers: Array[ModifierData] = []
+var _items: Array[ItemData] = []
 var _tuning: TuningData
 
 
@@ -54,7 +56,12 @@ func _init(moves: Array[MoveData], enemies: Array[EnemyData], tuning_data: Tunin
 ## is an empty list; a file of the wrong type is reported and skipped.
 static func load_all() -> ContentDb:
 	return from_parts(
-		_load_moves(), _load_enemies(), _load_tuning(), _load_relics(), _load_modifiers()
+		_load_moves(),
+		_load_enemies(),
+		_load_tuning(),
+		_load_relics(),
+		_load_modifiers(),
+		_load_items()
 	)
 
 
@@ -66,6 +73,7 @@ static func from_parts(
 	tuning_data: TuningData,
 	relics: Array[RelicData] = [],
 	modifiers: Array[ModifierData] = [],
+	items: Array[ItemData] = [],
 ) -> ContentDb:
 	var db := ContentDb.new(moves, enemies, tuning_data)
 	db._relics = relics.duplicate()
@@ -75,6 +83,10 @@ static func from_parts(
 	db._modifiers = modifiers.duplicate()
 	db._modifiers.sort_custom(
 		func(a: ModifierData, b: ModifierData) -> bool: return String(a.id) < String(b.id)
+	)
+	db._items = items.duplicate()
+	db._items.sort_custom(
+		func(a: ItemData, b: ItemData) -> bool: return String(a.id) < String(b.id)
 	)
 	return db
 
@@ -109,6 +121,19 @@ func modifier(id: StringName) -> ModifierData:
 		if modifier_data.id == id:
 			return modifier_data
 	return null
+
+
+## The pouch item with this id, or null if none exists.
+func item(id: StringName) -> ItemData:
+	for item_data: ItemData in _items:
+		if item_data.id == id:
+			return item_data
+	return null
+
+
+## Every pouch item, sorted by id.
+func all_items() -> Array[ItemData]:
+	return _items.duplicate()
 
 
 ## Every relic, sorted by id.
@@ -229,6 +254,17 @@ static func _load_modifiers() -> Array[ModifierData]:
 		else:
 			modifiers.append(modifier_data)
 	return modifiers
+
+
+static func _load_items() -> Array[ItemData]:
+	var items: Array[ItemData] = []
+	for path: String in _tres_paths(ITEMS_DIR):
+		var item_data: ItemData = load(path) as ItemData
+		if item_data == null:
+			push_error("%s is not an ItemData; skipped" % path)
+		else:
+			items.append(item_data)
+	return items
 
 
 ## Tuning is required. A missing or wrong file falls back to the PRD defaults, with an error.

@@ -164,6 +164,7 @@ func _enter_battle() -> void:
 	var entered: bool = run.node_payload.get("entered", false) == true
 	_battle_entry = ActionLog.battle_entry(run.position, enemy.id, entered)
 	battle.action_sent.connect(_on_action_sent)
+	battle.events_applied.connect(_on_battle_events)
 	# Deferred: at instant speed the battle finishes inside its own _input, and swapping the scene
 	# there would pull the battle out of the tree mid-call.
 	battle.battle_finished.connect(_on_battle_finished, CONNECT_DEFERRED)
@@ -181,7 +182,7 @@ func _enter_reward() -> void:
 		_enter_map()
 		return
 	var reward_scene: RewardScene = _load_scene(REWARD_SCENE) as RewardScene
-	reward_scene.show_reward(reward, RunRules.owned_ids(run))
+	reward_scene.show_reward(reward, RunRules.owned_ids(run), run.pouch)
 	reward_scene.choice_made.connect(_on_reward_choice.bind(reward, reward_scene))
 	_change_scene(reward_scene)
 
@@ -195,8 +196,15 @@ func _on_reward_choice(
 	var pick: int = choice.index if choice.kind == RunRules.RewardChoice.Kind.MOVE else -1
 	if not run.action_log.is_empty():
 		var actions: Array = run.action_log[-1]["actions"]
-		actions.append({"kind": "reward", "pick": pick})
+		actions.append({"kind": "reward", "pick": pick, "item_slot": choice.item_slot})
 	goto(RunState.NodeState.MAP)
+
+
+## A used pouch item leaves the run's pouch at once (D34), so a reload can't use it twice.
+func _on_battle_events(events: Array[BattleEvent]) -> void:
+	for event: BattleEvent in events:
+		if event.kind == BattleEvent.Kind.ITEM_USED:
+			run.pouch[event.amount] = &""
 
 
 func _on_action_sent(action: PlayerAction) -> void:
@@ -214,6 +222,11 @@ func _on_battle_finished(outcome: BattleState.Outcome) -> void:
 		goto(RunState.NodeState.REWARD)
 		return
 	run.rng_states = _battle_rngs.to_states()
+	if outcome == BattleState.Outcome.FLED:
+		# Smoke Bomb: the cat keeps its HP and leaves with no rewards (PRD §4.6).
+		run.hp = state.cat.hp
+		goto(RunState.NodeState.MAP)
+		return
 	abandon_run()
 
 

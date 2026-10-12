@@ -64,6 +64,11 @@ func _play_entry(
 			)
 			return
 		events.append_array(action_events)
+		for event: BattleEvent in action_events:
+			if event.kind == BattleEvent.Kind.ITEM_USED:
+				run.pouch[event.amount] = &""
+	if start.state.outcome == BattleState.Outcome.FLED:
+		run.hp = start.state.cat.hp
 
 
 ## Generates the act map on first use, then enters the logged node the way Game.enter_node does.
@@ -110,6 +115,8 @@ func _take_reward(
 	var choice: RunRules.RewardChoice = (
 		RunRules.RewardChoice.skip() if pick < 0 else RunRules.RewardChoice.move(pick)
 	)
+	var item_slot_value: float = action_entry.get("item_slot", -1)
+	choice.item_slot = int(item_slot_value)
 	if (
 		pick >= reward.move_offers.size()
 		or not RunRules.take_reward(run, reward, choice, db.tuning())

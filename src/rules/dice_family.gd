@@ -85,6 +85,16 @@ static func roll_faces(count: int, session: GambleSession, rng: SeededRng) -> Pa
 	return faces
 
 
+## Faces that land [param dice]'s best-paying outcome: the jackpot face for Snake Eyes, else all
+## sixes (Lucky Charm, PRD §8.3).
+static func top_tier_faces(dice: DiceGambleData) -> Array[int]:
+	var face: int = dice.jackpot_face if _is_jackpot(dice) else DIE_SIDES
+	var faces: Array[int] = []
+	for _die: int in dice.dice_count:
+		faces.append(face)
+	return faces
+
+
 ## Whether a die showing [param face] may take a Luck reroll. Tier moves reroll 1s and 2s. Snake
 ## Eyes is inverted and rerolls every face but its jackpot (PRD §6.1).
 static func luck_eligible(dice: DiceGambleData, face: int) -> bool:

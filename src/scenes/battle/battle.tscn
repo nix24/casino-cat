@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://src/ui/move_button.tscn" id="4_move"]
 [ext_resource type="PackedScene" path="res://src/ui/odds_table.tscn" id="5_odds"]
 [ext_resource type="PackedScene" path="res://src/ui/overlays/dice_overlay.tscn" id="6_dice"]
+[ext_resource type="PackedScene" path="res://src/ui/pouch_bar.tscn" id="14_pouch"]
 [ext_resource type="Script" uid="uid://chsok1qawh1h3" path="res://src/fx/event_player.gd" id="7_events"]
 [ext_resource type="Script" uid="uid://dfymbb4vy2y7s" path="res://src/data/move_data.gd" id="8_move_data"]
 [ext_resource type="Resource" uid="uid://dsjfkdrovtgl5" path="res://src/content/enemies/sewer_rat.tres" id="9_rat"]
@@ -141,6 +142,21 @@ unique_name_in_owner = true
 layout_mode = 2
 focus_neighbor_left = NodePath("../Move3")
 focus_neighbor_right = NodePath("../Move1")
+
+[node name="Pouch" parent="." instance=ExtResource("14_pouch")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -104.0
+offset_top = -134.0
+offset_right = -8.0
+offset_bottom = -82.0
+grow_horizontal = 0
+grow_vertical = 0
 
 [node name="MoveOdds" parent="." unique_id=1213035351 instance=ExtResource("5_odds")]
 unique_name_in_owner = true

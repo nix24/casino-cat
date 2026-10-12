@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" uid="uid://13vw4q4o1nhy" path="res://src/data/item_data.gd" id="1_item"]
+[ext_resource type="Script" uid="uid://4ldioplohfg4" path="res://src/data/effect_data.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="EffectData_smoke_bomb_0"]
+script = ExtResource("2_effect")
+kind = 13
+
+[resource]
+script = ExtResource("1_item")
+id = &"smoke_bomb"
+display_name = "Smoke Bomb"
+price = 25
+effects = Array[ExtResource("2_effect")]([SubResource("EffectData_smoke_bomb_0")])
+description = "Flee a normal battle with no rewards. Not usable on elites or bosses."

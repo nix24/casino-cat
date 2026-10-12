@@ -2,7 +2,7 @@ class_name BattleState
 extends RefCounted
 ## Everything one battle remembers between turns. Created by BattleRules.start; apply() updates it.
 
-enum Outcome { ONGOING, WON, LOST }
+enum Outcome { ONGOING, WON, LOST, FLED }
 
 var cat: Combatant = Combatant.new()
 var enemy: Combatant = Combatant.new(BattleEvent.Actor.ENEMY)
@@ -26,3 +26,12 @@ var repeat_shift: int = 0
 var acting_slot: int = 0
 ## The gamble waiting for a player choice, or null. While set, only GAMBLE_CHOICE is accepted.
 var pending: GambleSession
+## Turn the last pouch item was used on; one item per turn (PRD §8.3).
+var last_item_turn: int = -1
+## Lucky Charm: the next gamble resolves at its top tier.
+var guarantee_top_tier: bool = false
+## Ball of Yarn: the enemy's next attack deals this percent (rounded down); 0 when unused.
+var weaken_next_attack_pct: int = 0
+## Laser Pointer: turns left on the forced enemy suit, and the suit to restore after.
+var suit_override_turns: int = 0
+var suit_before_override: Suit.Type = Suit.Type.CLUBS

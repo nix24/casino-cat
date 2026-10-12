@@ -15,6 +15,8 @@ extends RefCounted
 ## - BACKFIRE: amount is the HP lost (shield does not apply), value_after the cat's HP after it.
 ## - DUE_CHANGED: reason is the gamble family, amount the new pip count.
 ## - RELIC_TRIGGERED: reason is the relic id (T013).
+## - ITEM_USED: reason is the item id, amount the pouch slot (T014). STATUS_CLEANSED: status.
+## - SUIT_OVERRIDE_EXPIRED: Laser Pointer ended; a SUIT_SHIFTED (actor ENEMY) follows.
 ## - REROLLS_CHANGED: amount is the rerolls left. Gamble detail lives in `gamble` (T002).
 
 enum Kind {
@@ -44,6 +46,10 @@ enum Kind {
 	DUE_CHANGED,
 	REROLLS_CHANGED,
 	RELIC_TRIGGERED,
+	ITEM_USED,
+	STATUS_CLEANSED,
+	FLED,
+	SUIT_OVERRIDE_EXPIRED,
 }
 enum Actor { CAT, ENEMY }
 

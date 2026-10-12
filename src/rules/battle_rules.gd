@@ -53,6 +53,8 @@ static func apply(
 
 	if action.kind == PlayerAction.Kind.GAMBLE_CHOICE:
 		return _gamble_choice(state, action.gamble_choice, ctx, rngs.gamble)
+	if action.kind == PlayerAction.Kind.USE_ITEM:
+		return _use_item(state, action, ctx)
 
 	var move: MoveData = _move_for_slot(state, action.slot, ctx)
 	var instance: MoveInstance = state.equipped[action.slot]
@@ -113,10 +115,10 @@ static func _rejection_reason(
 		if state.pending == null:
 			return &"no_gamble_pending"
 		return DiceFamily.choice_rejection(state.pending, action.gamble_choice, state)
-	if action.kind != PlayerAction.Kind.USE_MOVE:
-		return &"not_available_yet"
 	if state.outcome != BattleState.Outcome.ONGOING:
 		return &"battle_over"
+	if action.kind == PlayerAction.Kind.USE_ITEM:
+		return _item_rejection(state, action, ctx)
 	if state.pending != null:
 		return &"gamble_pending"
 	if action.slot < 0 or action.slot >= state.equipped.size():
@@ -125,6 +127,100 @@ static func _rejection_reason(
 	if _mp_cost(state, move, state.equipped[action.slot], ctx) > state.mp:
 		return &"not_affordable"
 	return &""
+
+
+## Why the item in [param action]'s pouch slot can't be used now, or &"" (PRD §8.3).
+static func _item_rejection(
+	state: BattleState, action: PlayerAction, ctx: BattleContext
+) -> StringName:
+	if state.pending != null:
+		return &"pending"
+	var slot: int = action.pouch_slot
+	if slot < 0 or slot >= ctx.pouch.size() or ctx.pouch[slot] == &"":
+		return &"empty_slot"
+	if state.last_item_turn == state.turn:
+		return &"item_already_used"
+	for effect: EffectData in ctx.items[ctx.pouch[slot]].effects:
+		match effect.kind:
+			EffectData.Kind.FLEE:
+				if state.enemy_data.tier != EnemyData.Tier.NORMAL:
+					return &"smoke_bomb_not_normal"
+			EffectData.Kind.SET_ENEMY_SUIT:
+				if action.choice < 0 or action.choice >= Suit.Type.size():
+					return &"bad_suit"
+	return &""
+
+
+## Uses one pouch item (PRD §8.3): ITEM_USED, then each effect in order. It never ends the turn,
+## so the enemy doesn't act. Smoke Bomb ends the battle as FLED.
+static func _use_item(
+	state: BattleState, action: PlayerAction, ctx: BattleContext
+) -> Array[BattleEvent]:
+	var events: Array[BattleEvent] = []
+	var item_id: StringName = ctx.pouch[action.pouch_slot]
+	var item: ItemData = ctx.items[item_id]
+	ctx.pouch[action.pouch_slot] = &""
+	state.last_item_turn = state.turn
+	var used := BattleEvent.new(BattleEvent.Kind.ITEM_USED)
+	used.reason = item_id
+	used.amount = action.pouch_slot
+	events.append(used)
+	for effect: EffectData in item.effects:
+		if effect.kind == EffectData.Kind.FLEE:
+			return _finish(state, BattleState.Outcome.FLED, BattleEvent.Kind.FLED, events)
+		_item_effect(effect, state, action.choice, ctx.tuning, events)
+	return events
+
+
+static func _item_effect(
+	effect: EffectData,
+	state: BattleState,
+	choice: int,
+	tuning: TuningData,
+	events: Array[BattleEvent]
+) -> void:
+	match effect.kind:
+		EffectData.Kind.HEAL:
+			_heal(state.cat, BattleEvent.Actor.CAT, effect.amount, &"item", events)
+		EffectData.Kind.MP_GAIN:
+			_change_mp(state, tuning, BattleEvent.Actor.CAT, &"item", effect.amount, events)
+		EffectData.Kind.SHIELD:
+			_gain_shield(state.cat, BattleEvent.Actor.CAT, effect.amount, tuning, events)
+		EffectData.Kind.CLEANSE:
+			for status: StringName in state.cat.statuses.keys():
+				state.cat.statuses.erase(status)
+				var cleansed := BattleEvent.new(BattleEvent.Kind.STATUS_CLEANSED)
+				cleansed.status = status
+				events.append(cleansed)
+			state.cat.statuses_fresh.clear()
+		EffectData.Kind.ADD_REROLLS:
+			state.rerolls += effect.amount
+			var rerolls_changed := BattleEvent.new(BattleEvent.Kind.REROLLS_CHANGED)
+			rerolls_changed.amount = state.rerolls
+			events.append(rerolls_changed)
+		EffectData.Kind.FLAT_DAMAGE_NEXT_MOVE:
+			state.cat.flat_damage_bonus += effect.amount
+		EffectData.Kind.WEAKEN_NEXT_INTENT:
+			state.weaken_next_attack_pct = effect.amount
+		EffectData.Kind.GUARANTEE_TOP_TIER:
+			state.guarantee_top_tier = true
+		EffectData.Kind.SET_ENEMY_SUIT:
+			if state.suit_override_turns == 0:
+				state.suit_before_override = state.enemy.suit
+			state.suit_override_turns = effect.turns
+			_shift_enemy_suit(state, choice as Suit.Type, events)
+		_:
+			assert(false, "item effect kind %d is not implemented" % effect.kind)
+
+
+static func _shift_enemy_suit(
+	state: BattleState, suit: Suit.Type, events: Array[BattleEvent]
+) -> void:
+	var shifted: BattleEvent = _suit_shifted_event(state.enemy.suit, suit)
+	shifted.actor = BattleEvent.Actor.ENEMY
+	shifted.target = BattleEvent.Actor.ENEMY
+	state.enemy.suit = suit
+	events.append(shifted)
 
 
 static func _move_for_slot(state: BattleState, slot: int, ctx: BattleContext) -> MoveData:
@@ -298,6 +394,8 @@ static func _resolve_turn(
 	state: BattleState, move: MoveData, ctx: BattleContext, events: Array[BattleEvent]
 ) -> Array[BattleEvent]:
 	var hook_mp: int = _after_move_hooks(state, move, ctx, events)
+	# Sardine Tin's bonus lasts for one move (PRD §8.3).
+	state.cat.flat_damage_bonus = 0
 	var instance: MoveInstance = state.equipped[state.acting_slot]
 	var suit_after: Suit.Type = _suit_after_move(state, move, instance, ctx.tuning)
 	if suit_after != state.cat.suit:
@@ -333,6 +431,10 @@ static func _open_gamble(
 	session.odds = GambleRules.preview(move.gamble, state, ctx)
 	session.forced = ctx.forced.duplicate()
 	ctx.forced.clear()
+	if state.guarantee_top_tier:
+		# Lucky Charm: the faces of the top tier, shown in the preview at 100% (PRD §8.3).
+		session.forced = DiceFamily.top_tier_faces(move.gamble as DiceGambleData)
+		state.guarantee_top_tier = false
 	state.pending = session
 
 	var preview_ctx := HookContext.new()
@@ -444,10 +546,15 @@ static func _enemy_acts(state: BattleState, tuning: TuningData, events: Array[Ba
 static func _enemy_attacks(
 	state: BattleState, intent: IntentData, events: Array[BattleEvent]
 ) -> void:
+	var base: int = intent.amount
+	if state.weaken_next_attack_pct > 0:
+		# Ball of Yarn: this attack only, rounded down (PRD §8.3).
+		base = floori(intent.amount * state.weaken_next_attack_pct / 100.0)
+		state.weaken_next_attack_pct = 0
 	var amount: int = (
 		Damage
 		. hit_amount(
-			intent.amount,
+			base,
 			state.enemy.flat_damage_bonus,
 			Suit.damage_multiplier(state.enemy.suit, state.cat.suit),
 			1.0,
@@ -475,6 +582,11 @@ static func _end_turn(
 	_tick_statuses(state.enemy, BattleEvent.Actor.ENEMY, events)
 	state.cat.statuses_fresh.clear()
 	state.enemy.statuses_fresh.clear()
+	if state.suit_override_turns > 0:
+		state.suit_override_turns -= 1
+		if state.suit_override_turns == 0:
+			events.append(BattleEvent.new(BattleEvent.Kind.SUIT_OVERRIDE_EXPIRED))
+			_shift_enemy_suit(state, state.suit_before_override, events)
 
 	var dealt: int = _mp_from_hits(events, BattleEvent.Actor.CAT, tuning.mp_per_damage_dealt)
 	_change_mp(state, tuning, BattleEvent.Actor.CAT, &"dealt", dealt, events)
@@ -633,12 +745,14 @@ static func _change_mp(
 	amount: int,
 	events: Array[BattleEvent]
 ) -> void:
-	if amount == 0:
-		return
+	var mp_before: int = state.mp
 	state.mp = clampi(state.mp + amount, 0, tuning.mp_max)
+	if state.mp == mp_before:
+		return
 	var event := BattleEvent.new(BattleEvent.Kind.MP_CHANGED, actor)
 	event.reason = reason
-	event.amount = amount
+	# The change that happened, so a gain clipped at max MP shows what the cat really got.
+	event.amount = state.mp - mp_before
 	event.value_after = state.mp
 	events.append(event)
 

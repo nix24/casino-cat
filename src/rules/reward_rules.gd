@@ -1,7 +1,8 @@
 class_name RewardRules
 extends RefCounted
 ## Battle reward rolls (PRD §5.1, §10.6, decisions D30). Pure: every draw comes from the run's
-## reward stream, in this order: Purrls, the item roll, then the move offer.
+## reward stream, in this order: Purrls, the item roll, the item (when one drops), then the move
+## offer.
 
 ## Normal-battle Purrls per act, inclusive. Elites pay twice both ends (PRD §10.6).
 const PURRLS_RANGES: Dictionary[int, Vector2i] = {
@@ -37,6 +38,13 @@ static func item_drops(is_elite: bool, rng: SeededRng) -> bool:
 	if is_elite:
 		return true
 	return rng.chance(ITEM_DROP_CHANCE)
+
+
+## A dropped pouch item, uniform over every item (D30). Empty when there are none.
+static func drop_item(items: Array[ItemData], rng: SeededRng) -> StringName:
+	if items.is_empty():
+		return &""
+	return items[rng.range_int(0, items.size() - 1)].id
 
 
 ## The moves a battle can offer (D30): every non-starter move, with signatures only once

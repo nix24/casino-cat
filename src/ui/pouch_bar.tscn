@@ -1,0 +1,71 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/pouch_bar.gd" id="1_pouch_bar"]
+
+[node name="PouchBar" type="PanelContainer"]
+script = ExtResource("1_pouch_bar")
+
+[node name="Rows" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Title" type="Label" parent="Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Q pouch"
+horizontal_alignment = 1
+
+[node name="Slots" type="HBoxContainer" parent="Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 1
+
+[node name="Slot1" type="Button" parent="Rows/Slots"]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+focus_mode = 2
+text = "·"
+
+[node name="Slot2" type="Button" parent="Rows/Slots"]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+focus_mode = 2
+text = "·"
+
+[node name="Slot3" type="Button" parent="Rows/Slots"]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+focus_mode = 2
+text = "·"
+
+[node name="PickLabel" type="Label" parent="Rows"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="SuitPicker" type="HBoxContainer" parent="Rows"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+alignment = 1
+
+[node name="Spades" type="Button" parent="Rows/SuitPicker"]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+focus_mode = 2
+
+[node name="Hearts" type="Button" parent="Rows/SuitPicker"]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+focus_mode = 2
+
+[node name="Diamonds" type="Button" parent="Rows/SuitPicker"]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+focus_mode = 2
+
+[node name="Clubs" type="Button" parent="Rows/SuitPicker"]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+focus_mode = 2
