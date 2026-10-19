@@ -57,7 +57,6 @@ theme_override_constants/separation = 6
 [node name="ResultLabel" type="Label" parent="Layout/Top/Info"]
 unique_name_in_owner = true
 layout_mode = 2
-clip_text = true
 
 [node name="Buttons" type="HBoxContainer" parent="Layout"]
 layout_mode = 2

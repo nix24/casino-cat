@@ -37,6 +37,17 @@ func test_double_or_nothing_flip_then_cash_out() -> void:
 	_close_battle(scene)
 
 
+func test_tails_reads_damage_and_backfire() -> void:
+	var scene: BattleScene = _open_battle([0])
+	scene.use_move(0)
+	var overlay := scene.get_node("%CoinOverlay") as CoinOverlay
+	var result := overlay.find_child("ResultLabel", true, false) as Label
+	assert_eq(result.text, "Tails: 0 damage, 3 backfire", "tails result")
+	assert_true(overlay.visible, "the result stays up until the next move")
+	assert_true(not (scene.get_node("%MoveOdds") as OddsTable).visible, "odds unpinned")
+	_close_battle(scene)
+
+
 func _open_battle(forced: Array[int]) -> BattleScene:
 	var move: MoveData = load(DOUBLE_OR_NOTHING_PATH) as MoveData
 	var ctx := BattleContext.new()

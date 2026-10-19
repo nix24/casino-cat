@@ -14,18 +14,19 @@ func test_nine_lives_shows_total_bust_and_forgiveness() -> void:
 	var scene: BattleScene = _open_battle()
 	var counts := scene.get_node("%DeckCounts") as DeckCounts
 	assert_true(counts.visible, "deck counts show with a card move")
-	assert_eq((counts.get_child(6) as Label).text, "7 ●●", "a fresh deck before the first draw")
+	assert_eq((counts.find_child("Header") as Label).text, "Deck", "the strip says what it is")
+	assert_eq(_deck_count(counts, 6).text, "7 ●●", "a fresh deck before the first draw")
 	scene.debug_state().deck = PackedInt32Array([1, 2, 6, 8, 9])
 	scene.use_move(SLOT_NINE_LIVES)
 	var overlay := scene.get_node("%CardOverlay") as CardOverlay
 	assert_true(overlay.visible, "overlay opens")
 	assert_eq(_label(overlay, "TotalLabel").text, "Total 17 · Bust next: 33%", "1 of 3 busts")
-	assert_eq((counts.get_child(8) as Label).text, "9 ○○", "drawn 9 leaves the count")
+	assert_eq(_deck_count(counts, 8).text, "9 ○○", "drawn 9 leaves the count")
 	assert_true((overlay.find_child("Stand", true, false) as Button).has_focus(), "Stand focused")
 
 	(overlay.find_child("Hit", true, false) as Button).pressed.emit()
 	assert_eq(_label(overlay, "StatusLabel").text, "Nine lives: forgiven", "said in words")
-	assert_true(not overlay.visible, "closes after the turn")
+	assert_true(overlay.visible, "stays up until the next move")
 	assert_eq(scene.battle_state().enemy.hp, 120 - 17, "forgiven bust stands on 17")
 	_close_battle(scene)
 
@@ -73,6 +74,10 @@ func _close_battle(scene: BattleScene) -> void:
 
 func _root() -> Window:
 	return (Engine.get_main_loop() as SceneTree).root
+
+
+func _deck_count(counts: DeckCounts, index: int) -> Label:
+	return counts.find_child("Grid").get_child(index) as Label
 
 
 func _label(overlay: CardOverlay, label_name: String) -> Label:

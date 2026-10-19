@@ -20,12 +20,14 @@ var _learning_index: int = -1
 @onready var _purrls: Label = %Purrls
 @onready var _item_row: VBoxContainer = %ItemRow
 @onready var _offers: VBoxContainer = %Offers
+@onready var _swap_hint: Label = %SwapHint
 @onready var _skip: Button = %Skip
 @onready var _loadout: LoadoutEditor = %Loadout
 
 
 func _ready() -> void:
 	_title.text = Strings.REWARD_TITLE
+	_swap_hint.text = Strings.REWARD_SWAP_HINT
 	_skip.pressed.connect(_on_skip_pressed)
 	_loadout.learn_resolved.connect(_on_learn_resolved)
 	_loadout.learn_skipped.connect(_on_skip_pressed)
@@ -86,7 +88,7 @@ func _render_item_row() -> void:
 	if empty_slot >= 0:
 		_item_slot = empty_slot
 		var into_label := Label.new()
-		into_label.text = Strings.REWARD_ITEM_INTO_FORMAT % (empty_slot + 1)
+		into_label.text = Strings.REWARD_ITEM_POUCH
 		_item_row.add_child(into_label)
 		return
 	var group := ButtonGroup.new()

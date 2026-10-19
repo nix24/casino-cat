@@ -12,7 +12,7 @@ func test_opening_screen() -> void:
 	assert_eq(_intent_text(scene), "⚔ ♠ 5", "opening intent")
 	assert_eq(
 		_move_button(scene, SLOT_SWIPE).text,
-		"Swipe ♦\n7 → 11 (×1.5)\ntheir hit ×0.75",
+		"Swipe ♦\n7 → 11 (♦ beats ♠ ×1.5)\ntheir hit ♦ resists ♠ ×0.75",
 		"swipe lines"
 	)
 	assert_true(_move_button(scene, SLOT_PAW_ROLL).disabled, "paw roll needs 10 more MP")
@@ -34,7 +34,7 @@ func test_two_swipes_win() -> void:
 	_close_battle(scene)
 
 
-func test_confirm_skips_and_tab_cycles_speed() -> void:
+func test_confirm_skips_and_toggle_speed_cycles() -> void:
 	var scene: BattleScene = _open_battle(EventPlayer.SPEED_NORMAL)
 	var player := scene.get_node("%EventPlayer") as EventPlayer
 	assert_true(not player.is_idle(), "the opening plays at 1x")
@@ -51,7 +51,17 @@ func test_confirm_skips_and_tab_cycles_speed() -> void:
 
 	_press(&"toggle_speed")
 	assert_eq(scene.speed, EventPlayer.SPEED_DOUBLE, "toggle_speed cycles 1x to 2x")
-	assert_eq((scene.get_node("%SpeedLabel") as Label).text, "speed: 2×", "speed label")
+	assert_eq((scene.get_node("%SpeedButton") as Button).text, "speed: 2× [F]", "speed button")
+	_close_battle(scene)
+
+
+func test_speed_button_cycles_back_to_1x() -> void:
+	var scene: BattleScene = _open_battle(EventPlayer.SPEED_NORMAL)
+	var button := scene.get_node("%SpeedButton") as Button
+	for press: int in 3:
+		button.pressed.emit()
+	assert_eq(scene.speed, EventPlayer.SPEED_NORMAL, "three presses come back to 1x")
+	assert_eq(button.text, "speed: 1× [F]", "button text")
 	_close_battle(scene)
 
 

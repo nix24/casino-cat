@@ -19,7 +19,7 @@ func test_move_button_lines_vs_sewer_rat() -> void:
 	)
 	assert_eq(
 		_lines(state, ctx, SLOT_SWIPE),
-		PackedStringArray(["Swipe ♦", "7 → 11 (×1.5)", "their hit ×0.75"]),
+		PackedStringArray(["Swipe ♦", "7 → 11 (♦ beats ♠ ×1.5)", "their hit ♦ resists ♠ ×0.75"]),
 		"swipe"
 	)
 	assert_eq(
@@ -54,6 +54,31 @@ func test_odds_row_text() -> void:
 	assert_eq(OddsTable.row_text(_row(odds, &"Fair")), "Fair  44.4%  10", "fair row")
 
 
+func test_long_odds_table_uses_two_columns() -> void:
+	var table := (load("res://src/ui/odds_table.tscn") as PackedScene).instantiate() as OddsTable
+	var root := (Engine.get_main_loop() as SceneTree).root
+	root.add_child(table)
+	var odds := GambleOdds.new()
+	odds.luck = 5
+	for value: int in range(1, 11):
+		var row := GambleOddsRow.new()
+		row.label = StringName(str(value))
+		row.probability = 0.1
+		row.payout = value * 2
+		odds.rows.append(row)
+	table.set_odds(odds)
+	var rows := table.find_child("Rows", true, false) as GridContainer
+	assert_eq(rows.columns, 2, "ten rows fit in five lines")
+	assert_eq(rows.get_child_count(), 12, "Luck header, a spacer, then ten rows")
+	assert_eq((rows.get_child(2) as Label).text, "1  10.0%  2", "rows start on a fresh line")
+
+	odds.rows.resize(4)
+	table.set_odds(odds)
+	assert_eq(rows.columns, 1, "short tables stay one column")
+	root.remove_child(table)
+	table.free()
+
+
 func test_strings_mult() -> void:
 	assert_eq(Strings.mult(1.0), "×1.0", "neutral")
 	assert_eq(Strings.mult(0.75), "×0.75", "disadvantage")
@@ -78,7 +103,7 @@ func test_re_suited_move_shows_its_new_suit() -> void:
 	var state: BattleState = BattleRules.start(_rat(), ctx, RngSet.for_seed("test").battle).state
 	assert_eq(
 		_lines(state, ctx, SLOT_SCRATCH),
-		PackedStringArray(["Scratch ♦", "6 → 9 (×1.5)", "their hit ×0.75"]),
+		PackedStringArray(["Scratch ♦", "6 → 9 (♦ beats ♠ ×1.5)", "their hit ♦ resists ♠ ×0.75"]),
 		"re-suited scratch attacks as ♦"
 	)
 
@@ -89,6 +114,28 @@ func test_status_and_due_text() -> void:
 	var statuses: Dictionary[StringName, int] = {&"weak": 2, &"regen": 1}
 	assert_eq(Strings.status_text(statuses), "weak 2 · regen 1", "two statuses")
 	assert_eq(Strings.due_text(2, 4), "Due ●●○○", "due 2 of 4")
+
+
+func test_matchup_text_names_the_cause() -> void:
+	assert_eq(Strings.matchup_text(Suit.Type.SPADES, Suit.Type.SPADES, 1.0), "×1.0", "neutral")
+	assert_eq(
+		Strings.matchup_text(Suit.Type.DIAMONDS, Suit.Type.SPADES, 1.5), "♦ beats ♠ ×1.5", "beats"
+	)
+	assert_eq(
+		Strings.matchup_text(Suit.Type.SPADES, Suit.Type.DIAMONDS, 0.75),
+		"♦ resists ♠ ×0.75",
+		"resists"
+	)
+
+
+func test_gamble_result_says_damage_and_backfire() -> void:
+	assert_eq(Strings.gamble_result(&"Tails", 0, 3), "Tails: 0 damage, 3 backfire", "tails")
+	assert_eq(Strings.gamble_result(&"2 heads", 32, 0), "2 heads: 32 damage", "no backfire")
+
+
+func test_speed_text_names_its_key() -> void:
+	assert_eq(Strings.speed_text(EventPlayer.SPEED_NORMAL), "speed: 1× [F]", "1x")
+	assert_eq(Strings.speed_text(EventPlayer.SPEED_INSTANT), "speed: instant [F]", "instant")
 
 
 # --- helpers ---------------------------------------------------------------------------------

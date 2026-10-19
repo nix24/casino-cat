@@ -18,7 +18,8 @@ border_color = Color(0.941, 0.659, 0.227, 1)
 theme_override_styles/panel = SubResource("StyleBoxFlat_odds")
 script = ExtResource("1_odds_table")
 
-[node name="Rows" type="VBoxContainer" parent="."]
+[node name="Rows" type="GridContainer" parent="."]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_constants/separation = 0
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 0

@@ -27,3 +27,5 @@ var counts: PackedInt32Array = PackedInt32Array()
 var bust_chance: float = 0.0
 ## Nine Lives forgave this bust (GAMBLE_RESOLVED, decisions §C).
 var forgiven: bool = false
+## Backfire the resolved gamble deals, before the HP floor (GAMBLE_RESOLVED).
+var backfire: int = 0

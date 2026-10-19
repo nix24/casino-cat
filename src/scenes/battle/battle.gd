@@ -45,7 +45,7 @@ var _is_odds_pinned: bool = false
 @onready var _action_label: Label = %ActionLabel
 @onready var _banner: Label = %Banner
 @onready var _due_label: Label = %DueLabel
-@onready var _speed_label: Label = %SpeedLabel
+@onready var _speed_button: Button = %SpeedButton
 @onready var _move_odds: OddsTable = %MoveOdds
 @onready var _dice_overlay: DiceOverlay = %DiceOverlay
 @onready var _coin_overlay: CoinOverlay = %CoinOverlay
@@ -92,6 +92,7 @@ func _ready() -> void:
 	_dice_overlay.confirmed.connect(_on_dice_confirmed)
 	_coin_overlay.called.connect(_on_coin_called)
 	_card_overlay.chose.connect(_on_card_chose)
+	_speed_button.pressed.connect(_cycle_speed)
 	_deck_counts.visible = _has_card_move()
 	_deck_counts.show_counts(CardFamily.visible_counts(_state.deck))
 	_apply_speed()
@@ -113,9 +114,7 @@ func use_move(slot: int) -> void:
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"toggle_speed"):
-		speed = (speed + 1) % (EventPlayer.SPEED_INSTANT + 1)
-		_apply_speed()
-		speed_changed.emit(speed)
+		_cycle_speed()
 		get_viewport().set_input_as_handled()
 		return
 	if not _event_player.is_idle() and _is_skip_press(event):
@@ -179,6 +178,7 @@ func _setup_panels() -> void:
 	_enemy_token.color = Strings.suit_color(enemy_data.suit)
 	_cat_token.color = Strings.suit_color(_state.cat.suit)
 	_due_label.text = Strings.due_text(0, _ctx.tuning.due_pips_max)
+	_due_label.tooltip_text = Strings.DUE_TOOLTIP
 
 
 ## MP cost of each equipped gamble move, for the tick marks on the MP bar.
@@ -212,8 +212,10 @@ func _setup_move_buttons() -> void:
 ## item in one turn, or Smoke Bomb on an elite. The action label says why.
 func _send(action: PlayerAction) -> void:
 	_set_input_on(false)
-	# A phase banner stays up until the player acts again.
+	# A phase banner and a gamble's result stay up until the player acts again.
 	_banner.visible = false
+	if action.kind != PlayerAction.Kind.GAMBLE_CHOICE:
+		_close_overlays()
 	var events: Array[BattleEvent] = BattleRules.apply(_state, action, _ctx, _rngs)
 	events_applied.emit(events)
 	if events.size() == 1 and events[0].kind == BattleEvent.Kind.ACTION_REJECTED:
@@ -276,9 +278,15 @@ func _refresh_previews() -> void:
 		_move_buttons[slot].set_preview(BattleRules.preview_move(_state, slot, _ctx))
 
 
+func _cycle_speed() -> void:
+	speed = (speed + 1) % (EventPlayer.SPEED_INSTANT + 1)
+	_apply_speed()
+	speed_changed.emit(speed)
+
+
 func _apply_speed() -> void:
 	_event_player.speed = speed
-	_speed_label.text = Strings.speed_text(speed)
+	_speed_button.text = Strings.speed_text(speed)
 
 
 func _on_item_chosen(slot: int, choice: int) -> void:
@@ -335,7 +343,8 @@ func _on_queue_finished() -> void:
 			_:
 				_dice_overlay.begin_choice(_state.rerolls)
 		return
-	_close_overlays()
+	_is_odds_pinned = false
+	_hide_odds()
 	_deck_counts.show_counts(CardFamily.visible_counts(_state.deck))
 	_refresh_previews()
 	_set_input_on(true)
@@ -424,8 +433,8 @@ func _on_gamble_event(event: BattleEvent) -> void:
 		BattleEvent.Kind.REROLLS_CHANGED:
 			_dice_overlay.set_rerolls(event.amount)
 		BattleEvent.Kind.GAMBLE_RESOLVED:
-			var result: String = (
-				Strings.GAMBLE_RESULT_FORMAT % [event.gamble.tier, event.gamble.payout]
+			var result: String = Strings.gamble_result(
+				event.gamble.tier, event.gamble.payout, event.gamble.backfire
 			)
 			match event.reason:
 				&"coin":

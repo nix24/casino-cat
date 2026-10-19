@@ -89,6 +89,8 @@ static func preview_move(state: BattleState, slot: int, ctx: BattleContext) -> M
 	var instance: MoveInstance = state.equipped[slot]
 	var preview := MovePreview.new()
 	preview.suit = suit_of(move, instance)
+	preview.enemy_suit = state.enemy.suit
+	preview.suit_after = state.cat.suit
 	preview.mp_cost = _mp_cost(state, move, instance, ctx)
 	preview.affordable = preview.mp_cost <= state.mp
 	preview.missing_mp = maxi(preview.mp_cost - state.mp, 0)
@@ -100,8 +102,8 @@ static func preview_move(state: BattleState, slot: int, ctx: BattleContext) -> M
 	elif move.category == MoveData.Category.GAMBLE:
 		preview.odds = GambleRules.preview(move.gamble, state, ctx)
 	if _is_attack(state.next_intent):
-		var suit_after: Suit.Type = _suit_after_move(state, move, instance, ctx.tuning)
-		preview.incoming_mult = Suit.damage_multiplier(state.enemy.suit, suit_after)
+		preview.suit_after = _suit_after_move(state, move, instance, ctx.tuning)
+		preview.incoming_mult = Suit.damage_multiplier(state.enemy.suit, preview.suit_after)
 	return preview
 
 
@@ -569,6 +571,7 @@ static func _settle_gamble(state: BattleState, ctx: BattleContext) -> Array[Batt
 	resolved.gamble.tier = session.tier
 	resolved.gamble.payout = session.damage
 	resolved.gamble.forgiven = session.forgiven
+	resolved.gamble.backfire = session.backfire
 	events.append(resolved)
 	if session.damage > 0:
 		_deal_damage(state.enemy, BattleEvent.Actor.CAT, session.damage, events)

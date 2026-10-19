@@ -44,6 +44,10 @@ const ODDS_STAND_AT_FORMAT: String = "If you hit below %d:"
 const ODDS_FORGIVENESS_READY: String = "Nine lives: next bust is forgiven"
 ## A gamble result line: "2 heads → 32".
 const GAMBLE_RESULT_FORMAT: String = "%s → %d"
+## Tooltip on the Due meter (PRD §6.0 rule 7).
+const DUE_TOOLTIP: String = "Due: each bad result adds a pip (+5 Luck); a top result empties it."
+const DECK_HEADER: String = "Deck"
+const DECK_TOOLTIP: String = "Cards left in the battle deck, by value."
 ## Special intents by special_id (PRD §9.3).
 const SPECIAL_INTENT_TEXT: Dictionary[StringName, String] = {
 	&"cheat_suit": "★ Cheat: takes the suit that beats yours",
@@ -91,11 +95,12 @@ const MAP_TO_TITLE: String = "Title"
 const REWARD_TITLE: String = "Battle won"
 const REWARD_PURRLS_FORMAT: String = "+%d Purrls"
 const REWARD_ITEM_FORMAT: String = "Pouch item: %s"
-const REWARD_ITEM_INTO_FORMAT: String = "Goes in slot %d"
+const REWARD_ITEM_POUCH: String = "Use it in battle from your pouch."
 const REWARD_ITEM_REPLACE_FORMAT: String = "Replace %s"
 const REWARD_ITEM_LEAVE: String = "Leave it"
 const REWARD_LEARN_FORMAT: String = "Learn %s %s · %s"
-const REWARD_OWNED: String = " (owned)"
+const REWARD_OWNED: String = " · already owned"
+const REWARD_SWAP_HINT: String = "Swap moves at shops and rest sites."
 const REWARD_SKIP_FORMAT: String = "Skip +%d Purrls"
 
 const POUCH_TITLE: String = "Q pouch"
@@ -237,6 +242,23 @@ static func mult(value: float) -> String:
 	return "×" + text
 
 
+## The suit matchup behind a multiplier: "♦ beats ♠ ×1.5", "♦ resists ♠ ×0.75", or just "×1.0".
+static func matchup_text(attacker: Suit.Type, defender: Suit.Type, value: float) -> String:
+	if value > 1.0:
+		return "%s beats %s %s" % [suit_glyph(attacker), suit_glyph(defender), mult(value)]
+	if value < 1.0:
+		return "%s resists %s %s" % [suit_glyph(defender), suit_glyph(attacker), mult(value)]
+	return mult(value)
+
+
+## A resolved gamble in words: "Tails: 0 damage, 3 backfire" or "2 heads: 32 damage".
+static func gamble_result(tier: StringName, payout: int, backfire: int) -> String:
+	var text: String = "%s: %d damage" % [tier, payout]
+	if backfire > 0:
+		text += ", %d backfire" % backfire
+	return text
+
+
 ## One intent line from an INTENT_SHOWN event: "⚔ ♠ 5", "🛡 6", "▼ weak 2", "MP −10".
 ## [param suit] is the enemy's suit, which the event doesn't carry.
 static func intent_text(event: BattleEvent, suit: Suit.Type) -> String:
@@ -314,14 +336,14 @@ static func deck_count_text(value: int, count: int) -> String:
 static func speed_text(at_speed: int) -> String:
 	match at_speed:
 		EventPlayer.SPEED_NORMAL:
-			return "speed: 1×"
+			return "speed: 1× [F]"
 		EventPlayer.SPEED_DOUBLE:
-			return "speed: 2×"
+			return "speed: 2× [F]"
 		_:
-			return "speed: instant"
+			return "speed: instant [F]"
 
 
-## One reward offer button: "Learn ♦ Gleam · uncommon", plus " (owned)" when the cat has it.
+## One reward offer button: "Learn ♦ Gleam · uncommon", plus " · already owned" when the cat has it.
 static func reward_offer(move_data: MoveData, is_owned: bool) -> String:
 	var rarity_name: String = MoveData.Rarity.keys()[move_data.rarity]
 	var text: String = (

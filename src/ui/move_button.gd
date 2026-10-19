@@ -36,14 +36,19 @@ static func preview_lines(move_data: MoveData, move_preview: MovePreview) -> Pac
 	var lines := PackedStringArray()
 	lines.append("%s %s" % [move_data.display_name, Strings.suit_glyph(move_preview.suit)])
 	lines.append(_effect_line(move_data, move_preview))
-	lines.append("their hit %s" % Strings.mult(move_preview.incoming_mult))
+	var incoming_text: String = Strings.matchup_text(
+		move_preview.enemy_suit, move_preview.suit_after, move_preview.incoming_mult
+	)
+	lines.append("their hit %s" % incoming_text)
 	return lines
 
 
 static func _effect_line(move_data: MoveData, move_preview: MovePreview) -> String:
 	match move_data.category:
 		MoveData.Category.BASIC, MoveData.Category.SIGNATURE:
-			var mult_text: String = Strings.mult(move_preview.triangle_mult)
+			var mult_text: String = Strings.matchup_text(
+				move_preview.suit, move_preview.enemy_suit, move_preview.triangle_mult
+			)
 			return "%s → %d (%s)" % [_base_text(move_data), move_preview.damage, mult_text]
 		MoveData.Category.GAMBLE:
 			return "%d MP · odds" % move_preview.mp_cost

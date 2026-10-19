@@ -103,16 +103,17 @@ offset_left = 256.0
 offset_top = 196.0
 offset_right = 400.0
 offset_bottom = 210.0
+mouse_filter = 1
 text = "Due ○○○○"
 
-[node name="SpeedLabel" type="Label" parent="." unique_id=1388292622]
+[node name="SpeedButton" type="Button" parent="." unique_id=1388292622]
 unique_name_in_owner = true
 layout_mode = 0
 offset_left = 256.0
 offset_top = 214.0
 offset_right = 400.0
-offset_bottom = 228.0
-text = "speed: 1×"
+offset_bottom = 232.0
+text = "speed: 1× [F]"
 
 [node name="MoveRow" type="HBoxContainer" parent="." unique_id=1177136984]
 layout_mode = 0
@@ -165,11 +166,10 @@ grow_vertical = 0
 unique_name_in_owner = true
 visible = false
 layout_mode = 0
-offset_left = 470.0
-offset_top = 180.0
-offset_right = 600.0
-offset_bottom = 276.0
-grow_vertical = 0
+offset_left = 440.0
+offset_top = 150.0
+offset_right = 632.0
+offset_bottom = 246.0
 
 [node name="DiceOverlay" parent="." unique_id=254439175 instance=ExtResource("6_dice")]
 unique_name_in_owner = true
@@ -205,7 +205,7 @@ layout_mode = 0
 offset_left = 16.0
 offset_top = 86.0
 offset_right = 196.0
-offset_bottom = 126.0
+offset_bottom = 140.0
 
 [node name="EventPlayer" type="Node" parent="." unique_id=1882137244]
 unique_name_in_owner = true

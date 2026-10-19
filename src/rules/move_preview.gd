@@ -14,6 +14,11 @@ var triangle_mult: float = 1.0
 ## Multiplier on the enemy's next attack if this move's suit becomes the cat's suit. 1.0 when the
 ## next intent is not an attack.
 var incoming_mult: float = 1.0
+## The enemy's suit now, for naming the matchup behind triangle_mult and incoming_mult.
+var enemy_suit: Suit.Type = Suit.Type.CLUBS
+## The cat's suit after this move. Only computed when the next intent is an attack; otherwise the
+## cat's current suit.
+var suit_after: Suit.Type = Suit.Type.CLUBS
 var mp_cost: int = 0
 var affordable: bool = false
 ## MP still needed to afford the move. 0 when affordable.

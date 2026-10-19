@@ -3,7 +3,11 @@ extends PanelContainer
 ## Read-only outcome table for a gamble (PRD §6.0 rule 2). It lists the rows the rules gave it and
 ## computes nothing: probability and payout are shown as they are.
 
-@onready var _rows: VBoxContainer = %Rows
+## Above this many outcome rows the table uses two columns, so High Card's ten rows fit between
+## the enemy panel and the move row instead of covering one of them.
+const ONE_COLUMN_ROW_LIMIT := 6
+
+@onready var _rows: GridContainer = %Rows
 
 
 ## Rebuilds the table from [param odds]. A Luck header shows when Luck is not zero.
@@ -11,12 +15,15 @@ func set_odds(odds: GambleOdds) -> void:
 	for child: Node in _rows.get_children():
 		_rows.remove_child(child)
 		child.queue_free()
+	_rows.columns = 2 if odds.rows.size() > ONE_COLUMN_ROW_LIMIT else 1
 	if odds.luck != 0:
 		_add_line("Luck %s%d" % ["+" if odds.luck > 0 else "", odds.luck])
 	if odds.is_forgiveness_ready:
 		_add_line(Strings.ODDS_FORGIVENESS_READY)
 	if odds.stand_at > 0:
 		_add_line(Strings.ODDS_STAND_AT_FORMAT % odds.stand_at)
+	if _rows.get_child_count() % _rows.columns != 0:
+		_add_line("")
 	for row: GambleOddsRow in odds.rows:
 		_add_line(row_text(row))
 
