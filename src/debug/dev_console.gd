@@ -7,6 +7,9 @@ const DEBUG_LOG_PATH: String = "user://debug.log"
 const GIVE_KINDS: PackedStringArray = ["move", "relic", "item", "mod"]
 const FORCE_FAMILIES_LATER: PackedStringArray = ["cups", "scratch", "ticket", "ante"]
 const NO_RUN_MESSAGE: String = "no run; start one with seed <text>"
+## Commands run once at start-up, one per line, so agents can drive the console without typing
+## into it (godot-ai can't type text).
+const AUTOEXEC_PATH: String = "user://autoexec.txt"
 
 ## Set by `god`. Applied to every battle that starts while it is on, and to the live one.
 var _god_mode: bool = false
@@ -14,6 +17,8 @@ var _god_mode: bool = false
 var _event_buffer: Array[BattleEvent] = []
 var _history: PackedStringArray = []
 var _history_index: int = 0
+## The loadout `sandbox fight` uses. Null until `sandbox moves` sets one.
+var _sandbox: DebugCommands.SandboxSetup
 
 @onready var _output: RichTextLabel = %Output
 @onready var _input_line: LineEdit = %Input
@@ -23,6 +28,17 @@ func _ready() -> void:
 	get_tree().node_added.connect(_on_node_added)
 	_input_line.text_submitted.connect(_on_text_submitted)
 	_print_line("dev console: type help")
+	_run_autoexec.call_deferred()
+
+
+func _run_autoexec() -> void:
+	if not FileAccess.file_exists(AUTOEXEC_PATH):
+		return
+	var text: String = FileAccess.get_file_as_string(AUTOEXEC_PATH)
+	_print_line("autoexec: %s" % AUTOEXEC_PATH)
+	for line: String in text.split("\n", false):
+		if not line.strip_edges().is_empty():
+			_on_text_submitted(line)
 
 
 func _input(event: InputEvent) -> void:
@@ -128,6 +144,8 @@ func _run_command(command_name: String, args: PackedStringArray) -> void:
 			_log_events()
 		"replay":
 			_replay()
+		"sandbox":
+			_sandbox_command(args)
 
 
 func _seed(args: PackedStringArray) -> void:
@@ -323,6 +341,72 @@ func _replay() -> void:
 	_print_line("replay ok: %d events" % replay.events.size())
 
 
+func _sandbox_command(args: PackedStringArray) -> void:
+	var sub: String = args[0] if not args.is_empty() else ""
+	match sub:
+		"moves":
+			var setup: DebugCommands.SandboxSetup = DebugCommands.parse_sandbox(
+				args.slice(1), Game.db
+			)
+			if not setup.error.is_empty():
+				_print_line(setup.error, true)
+				return
+			_sandbox = setup
+			_print_line("sandbox: %s" % DebugCommands.sandbox_line(setup))
+		"fight":
+			if args.size() != 2:
+				_print_usage("sandbox")
+				return
+			_sandbox_fight(StringName(args[1]))
+		"list":
+			if args.size() != 2 or not DebugCommands.SANDBOX_LISTS.has(args[1]):
+				_print_usage("sandbox")
+				return
+			_print_line(", ".join(DebugCommands.sandbox_ids(args[1], Game.db)))
+		_:
+			_print_usage("sandbox")
+
+
+## Starts a battle from the sandbox loadout without touching the run or its save. The battle
+## ends back on the sandbox screen, not the map.
+func _sandbox_fight(enemy_id: StringName) -> void:
+	var enemy: EnemyData = Game.db.enemy(enemy_id)
+	if enemy == null:
+		_print_line("unknown enemy: %s" % enemy_id, true)
+		return
+	if _sandbox == null:
+		_sandbox = DebugCommands.parse_sandbox(["scratch,swipe,curl_up"], Game.db)
+	var battle: BattleScene = (load(Game.BATTLE_SCENE) as PackedScene).instantiate() as BattleScene
+	var ctx: BattleContext = BattleContext.from_run(_sandbox.run, Game.db)
+	battle.setup(enemy, ctx, RngSet.for_seed(_sandbox.run.run_seed))
+	battle.speed = Settings.battle_speed
+	battle.battle_finished.connect(_on_sandbox_finished, CONNECT_DEFERRED)
+	if _sandbox.mp >= 0:
+		battle.ready.connect(_set_sandbox_mp.bind(battle, _sandbox.mp), CONNECT_ONE_SHOT)
+	get_tree().change_scene_to_node(battle)
+	_print_line("sandbox fight %s: %s" % [enemy_id, DebugCommands.sandbox_line(_sandbox)])
+	_set_open(false)
+
+
+func _set_sandbox_mp(battle: BattleScene, mp: int) -> void:
+	battle.debug_state().mp = mp
+	battle.debug_sync()
+
+
+func _on_sandbox_finished(outcome: BattleState.Outcome) -> void:
+	var screen := Label.new()
+	screen.set_anchors_preset(Control.PRESET_FULL_RECT)
+	screen.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	screen.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	screen.text = (
+		"Sandbox: %s\n%s\n\nsandbox fight <enemy> to go again"
+		% [BattleState.Outcome.keys()[outcome], DebugCommands.sandbox_line(_sandbox)]
+	)
+	get_tree().change_scene_to_node(screen)
+	_print_line("sandbox: battle %s" % BattleState.Outcome.keys()[outcome])
+	_set_open(true)
+
+
 func _is_one_int(args: PackedStringArray) -> bool:
 	return args.size() == 1 and args[0].is_valid_int()
 
@@ -365,6 +449,11 @@ func _usage_of(command_name: String) -> String:
 			)
 		"replay":
 			usage = "replay  (rebuild the run from its seed and action log)"
+		"sandbox":
+			usage = (
+				"sandbox moves <id,...> [mods <move:mod,...>] [relics <id,...>] [hp N] [mp N]"
+				+ " [seed S] | sandbox fight <enemy> | sandbox list moves|enemies|relics|mods"
+			)
 		"help":
 			usage = "help"
 		"clear":
