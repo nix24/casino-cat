@@ -12,7 +12,8 @@ var mp: int = 0
 ## The cat's loadout for this battle. Slots index into this array.
 var equipped: Array[MoveInstance] = []
 var last_move_id: StringName = &""
-## How many basic uses in a row of last_move_id. Drives the repeat penalty (PRD §4.4).
+## How many uses in a row of last_move_id, 1 for the first. Drives the basic repeat penalty
+## (PRD §4.4) and the utility halving (PRD §5.1). Pouch items don't touch it.
 var repeat_count: int = 0
 var intent_index: int = 0
 ## The intent the enemy will perform at the end of this turn, already shown to the player.

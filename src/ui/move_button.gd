@@ -54,7 +54,10 @@ static func _effect_line(move_data: MoveData, move_preview: MovePreview) -> Stri
 			return "%d MP · odds" % move_preview.mp_cost
 	if move_data.effects.is_empty():
 		return ""
-	return Strings.effect_text(move_data.effects[0])
+	var text: String = Strings.effect_text(move_data.effects[0], move_preview.effect_amounts[0])
+	if move_preview.repeat_halvings > 0:
+		text += " (%s)" % Strings.repeat_text(move_preview.repeat_halvings)
+	return text
 
 
 ## Base damage as printed: "6", or "6×2" for a move that hits twice.

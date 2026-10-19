@@ -23,5 +23,9 @@ var mp_cost: int = 0
 var affordable: bool = false
 ## MP still needed to afford the move. 0 when affordable.
 var missing_mp: int = 0
+## How many times a repeated utility move's amounts halve on this use (PRD §5.1). 0 otherwise.
+var repeat_halvings: int = 0
+## The move's effect amounts this use, parallel to MoveData.effects, after the utility halving.
+var effect_amounts: Array[int] = []
 ## Exact outcome table for a GAMBLE move, shown before the player commits. Null for other moves.
 var odds: GambleOdds

@@ -101,6 +101,9 @@ static func preview_move(state: BattleState, slot: int, ctx: BattleContext) -> M
 		preview.damage = _player_hit_amount(state, move, instance, repeat_count, ctx) * move.hits
 	elif move.category == MoveData.Category.GAMBLE:
 		preview.odds = GambleRules.preview(move.gamble, state, ctx)
+	preview.repeat_halvings = _utility_halvings(move, _next_repeat_count(state, move))
+	for effect: EffectData in move.effects:
+		preview.effect_amounts.append(_effect_amount(effect, preview.repeat_halvings))
 	if _is_attack(state.next_intent):
 		preview.suit_after = _suit_after_move(state, move, instance, ctx.tuning)
 		preview.incoming_mult = Suit.damage_multiplier(state.enemy.suit, preview.suit_after)
@@ -243,11 +246,30 @@ static func hits_directly(move: MoveData) -> bool:
 	return move.category == MoveData.Category.BASIC or move.category == MoveData.Category.SIGNATURE
 
 
-## Repeat tracker (PRD §4.4). Only basic moves stack. Any other use starts a new streak at 1.
+## Repeat tracker (PRD §4.4, §5.1). Basic and utility moves stack. Any other use starts a new
+## streak at 1.
 static func _next_repeat_count(state: BattleState, move: MoveData) -> int:
-	if move.category == MoveData.Category.BASIC and move.id == state.last_move_id:
+	var is_tracked: bool = (
+		move.category == MoveData.Category.BASIC or move.category == MoveData.Category.UTILITY
+	)
+	if is_tracked and move.id == state.last_move_id:
 		return state.repeat_count + 1
 	return 1
+
+
+## How many times a utility move's amounts halve on this use (PRD §5.1). 0 for other moves.
+static func _utility_halvings(move: MoveData, repeat_count: int) -> int:
+	if move.category != MoveData.Category.UTILITY:
+		return 0
+	return repeat_count - 1
+
+
+## [param effect]'s amount after the utility repeat halving. Statuses and cleanse keep theirs.
+static func _effect_amount(effect: EffectData, halvings: int) -> int:
+	match effect.kind:
+		EffectData.Kind.SHIELD, EffectData.Kind.HEAL, EffectData.Kind.MP_GAIN:
+			return effect.amount >> mini(halvings, 31)
+	return effect.amount
 
 
 ## Basic moves hit for their damage, one hit per `hits`. Then the effects run in order.
@@ -266,24 +288,29 @@ static func _resolve_move(
 			_deal_damage(state.enemy, BattleEvent.Actor.CAT, amount, events)
 			if state.enemy.hp <= 0:
 				break
+	var halvings: int = _utility_halvings(move, state.repeat_count)
 	for effect: EffectData in move.effects:
 		if effect.kind == EffectData.Kind.FIND_ITEM_CHANCE:
 			_find_item(effect.amount, ctx, rng, events)
 		else:
-			_resolve_effect(effect, state, tuning, events)
+			_resolve_effect(effect, _effect_amount(effect, halvings), state, tuning, events)
 
 
 static func _resolve_effect(
-	effect: EffectData, state: BattleState, tuning: TuningData, events: Array[BattleEvent]
+	effect: EffectData,
+	amount: int,
+	state: BattleState,
+	tuning: TuningData,
+	events: Array[BattleEvent]
 ) -> void:
 	var recipient: Combatant = (
 		state.enemy if effect.target == EffectData.Target.ENEMY else state.cat
 	)
 	match effect.kind:
 		EffectData.Kind.SHIELD:
-			_gain_shield(recipient, BattleEvent.Actor.CAT, effect.amount, tuning, events)
+			_gain_shield(recipient, BattleEvent.Actor.CAT, amount, tuning, events)
 		EffectData.Kind.HEAL:
-			_heal(recipient, BattleEvent.Actor.CAT, effect.amount, &"", events)
+			_heal(recipient, BattleEvent.Actor.CAT, amount, &"", events)
 		EffectData.Kind.MP_GAIN:
 			# Charged at end of turn with the other MP, so it lands after ENEMY_ACTED (PRD §7).
 			pass
@@ -751,7 +778,8 @@ static func _end_turn(
 	var taken: int = _mp_from_hits(events, BattleEvent.Actor.ENEMY, tuning.mp_per_damage_taken)
 	taken += _mp_from_backfire(events, tuning.mp_per_damage_taken)
 	_change_mp(state, tuning, BattleEvent.Actor.CAT, &"taken", taken, events)
-	_change_mp(state, tuning, BattleEvent.Actor.CAT, &"move", _move_mp_gain(move) + hook_mp, events)
+	var move_mp: int = _move_mp_gain(move, _utility_halvings(move, state.repeat_count))
+	_change_mp(state, tuning, BattleEvent.Actor.CAT, &"move", move_mp + hook_mp, events)
 
 	# An override took this turn's action, so the replaced pattern step comes up again (T018).
 	if not state.override_acted:
@@ -811,11 +839,11 @@ static func _mp_from_backfire(events: Array[BattleEvent], rate: float) -> int:
 	return total
 
 
-static func _move_mp_gain(move: MoveData) -> int:
+static func _move_mp_gain(move: MoveData, halvings: int) -> int:
 	var total: int = 0
 	for effect: EffectData in move.effects:
 		if effect.kind == EffectData.Kind.MP_GAIN:
-			total += effect.amount
+			total += _effect_amount(effect, halvings)
 	return total
 
 

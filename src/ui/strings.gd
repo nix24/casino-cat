@@ -283,20 +283,28 @@ static func intent_text(event: BattleEvent, suit: Suit.Type) -> String:
 			return "? %s" % event.reason
 
 
-## Short text for one move effect: "+10 shield", "+5 HP", "+6 MP", "weak 2". Empty for the
-## effect kinds the grey-box doesn't show.
-static func effect_text(effect: EffectData) -> String:
+## Short text for one move effect: "+10 shield", "+5 HP", "+6 MP", "weak 2". [param amount] is
+## the amount this use (the rules' preview), so a repeated utility move shows its halved value.
+## Empty for the effect kinds the grey-box doesn't show.
+static func effect_text(effect: EffectData, amount: int) -> String:
 	match effect.kind:
 		EffectData.Kind.SHIELD:
-			return "+%d shield" % effect.amount
+			return "+%d shield" % amount
 		EffectData.Kind.HEAL:
-			return "+%d HP" % effect.amount
+			return "+%d HP" % amount
 		EffectData.Kind.MP_GAIN:
-			return "+%d MP" % effect.amount
+			return "+%d MP" % amount
 		EffectData.Kind.STATUS:
 			return "%s %d" % [effect.status, effect.turns]
 		_:
 			return ""
+
+
+## The utility repeat tag (PRD §5.1): "repeat ½" after one halving, "repeat 1/4" after two.
+static func repeat_text(halvings: int) -> String:
+	if halvings == 1:
+		return "repeat ½"
+	return "repeat 1/%d" % (1 << mini(halvings, 31))
 
 
 ## The statuses on one combatant as "weak 2 · regen 1", or "—" when there are none.
