@@ -34,6 +34,8 @@ var _is_input_on: bool = false
 var _last_slot: int = 0
 ## Suit of the last move the cat used. The cat's damage popups take this suit's glyph and colour.
 var _cat_attack_suit: Suit.Type = Suit.Type.CLUBS
+## True while a gamble resolves: its odds stay pinned beside the overlay (PRD §13.4).
+var _is_odds_pinned: bool = false
 
 @onready var _event_player: EventPlayer = %EventPlayer
 @onready var _enemy_panel: CombatantPanel = %EnemyPanel
@@ -46,6 +48,9 @@ var _cat_attack_suit: Suit.Type = Suit.Type.CLUBS
 @onready var _speed_label: Label = %SpeedLabel
 @onready var _move_odds: OddsTable = %MoveOdds
 @onready var _dice_overlay: DiceOverlay = %DiceOverlay
+@onready var _coin_overlay: CoinOverlay = %CoinOverlay
+@onready var _card_overlay: CardOverlay = %CardOverlay
+@onready var _deck_counts: DeckCounts = %DeckCounts
 @onready var _pouch_bar: PouchBar = %Pouch
 @onready var _popups: Control = %Popups
 @onready var _move_buttons: Array[MoveButton] = [
@@ -85,6 +90,10 @@ func _ready() -> void:
 	_event_player.skipped.connect(_on_skipped)
 	_event_player.queue_finished.connect(_on_queue_finished)
 	_dice_overlay.confirmed.connect(_on_dice_confirmed)
+	_coin_overlay.called.connect(_on_coin_called)
+	_card_overlay.chose.connect(_on_card_chose)
+	_deck_counts.visible = _has_card_move()
+	_deck_counts.show_counts(CardFamily.visible_counts(_state.deck))
 	_apply_speed()
 	_set_input_on(false)
 	_event_player.enqueue(start.events)
@@ -289,16 +298,45 @@ func _on_dice_confirmed(reroll_dice: PackedInt32Array) -> void:
 	_send(action)
 
 
+func _on_card_chose(choice: GambleChoice) -> void:
+	var action := PlayerAction.new()
+	action.kind = PlayerAction.Kind.GAMBLE_CHOICE
+	action.gamble_choice = choice
+	_send(action)
+
+
+## The deck counts show only when the loadout has a Cards move (PRD §6.3).
+func _has_card_move() -> bool:
+	for instance: MoveInstance in _ctx.loadout:
+		if _ctx.moves[instance.move_id].gamble is CardGambleData:
+			return true
+	return false
+
+
+func _on_coin_called(coin_call: GambleChoice.CoinCall) -> void:
+	var action := PlayerAction.new()
+	action.kind = PlayerAction.Kind.GAMBLE_CHOICE
+	action.gamble_choice.coin = coin_call
+	_send(action)
+
+
 ## Runs when the queue empties. Nothing is animating now, so reading the state is safe.
 func _on_queue_finished() -> void:
 	if _state.outcome != BattleState.Outcome.ONGOING:
-		_dice_overlay.close()
+		_close_overlays()
 		battle_finished.emit(_state.outcome)
 		return
 	if _state.pending != null:
-		_dice_overlay.begin_choice(_state.rerolls)
+		match _state.pending.family:
+			&"coin":
+				_coin_overlay.begin_choice()
+			&"cards":
+				_card_overlay.begin_choice()
+			_:
+				_dice_overlay.begin_choice(_state.rerolls)
 		return
-	_dice_overlay.close()
+	_close_overlays()
+	_deck_counts.show_counts(CardFamily.visible_counts(_state.deck))
 	_refresh_previews()
 	_set_input_on(true)
 	_move_buttons[_last_slot].grab_focus()
@@ -357,10 +395,27 @@ func _on_event_played(event: BattleEvent, seconds: float) -> void:
 			_on_gamble_event(event)
 
 
+func _close_overlays() -> void:
+	_dice_overlay.close()
+	_coin_overlay.close()
+	_card_overlay.close()
+	_is_odds_pinned = false
+	_hide_odds()
+
+
 func _on_gamble_event(event: BattleEvent) -> void:
 	match event.kind:
 		BattleEvent.Kind.GAMBLE_STARTED:
-			_dice_overlay.open(event.gamble.odds)
+			_open_overlay(event)
+		BattleEvent.Kind.COIN_FLIPPED:
+			_coin_overlay.show_flip(event)
+		BattleEvent.Kind.STREAK_CHANGED:
+			_action_label.text = Strings.STREAK_FORMAT % event.amount
+		BattleEvent.Kind.DECK_SHUFFLED, BattleEvent.Kind.CARDS_REORDERED:
+			_deck_counts.show_counts(event.gamble.counts)
+		BattleEvent.Kind.CARD_DRAWN, BattleEvent.Kind.CARD_SAVED:
+			_card_overlay.show_cards(event)
+			_deck_counts.show_counts(event.gamble.counts)
 		BattleEvent.Kind.DICE_ROLLED, BattleEvent.Kind.DICE_REROLLED:
 			_dice_overlay.set_faces(event.gamble.faces)
 		BattleEvent.Kind.LUCK_TRIGGERED:
@@ -369,7 +424,33 @@ func _on_gamble_event(event: BattleEvent) -> void:
 		BattleEvent.Kind.REROLLS_CHANGED:
 			_dice_overlay.set_rerolls(event.amount)
 		BattleEvent.Kind.GAMBLE_RESOLVED:
-			_dice_overlay.show_result("%s → %d" % [event.gamble.tier, event.gamble.payout])
+			var result: String = (
+				Strings.GAMBLE_RESULT_FORMAT % [event.gamble.tier, event.gamble.payout]
+			)
+			match event.reason:
+				&"coin":
+					_coin_overlay.show_result(result)
+				&"cards":
+					_card_overlay.show_result(event)
+				_:
+					_dice_overlay.show_result(result)
+
+
+## Opens the family's overlay. Dice carries its own odds table; every other family pins the shared
+## one beside its overlay for the whole resolve (PRD §13.4).
+func _open_overlay(event: BattleEvent) -> void:
+	match event.reason:
+		&"coin":
+			_coin_overlay.open()
+		&"cards":
+			var move: MoveData = _ctx.moves[_ctx.loadout[_last_slot].move_id]
+			_card_overlay.open((move.gamble as CardGambleData).mode)
+		_:
+			_dice_overlay.open(event.gamble.odds)
+			return
+	_move_odds.set_odds(event.gamble.odds)
+	_move_odds.visible = true
+	_is_odds_pinned = true
 
 
 ## The relic's display name for a RELIC_TRIGGERED line, or its id if the context lacks it.
@@ -485,6 +566,8 @@ func _show_odds_for(button: MoveButton) -> void:
 
 
 func _hide_odds() -> void:
+	if _is_odds_pinned:
+		return
 	_move_odds.visible = false
 
 

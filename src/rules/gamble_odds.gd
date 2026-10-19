@@ -5,6 +5,10 @@ extends RefCounted
 var rows: Array[GambleOddsRow] = []
 ## The Luck the rows were computed at, shown on the preview.
 var luck: int = 0
+## Nine Lives: the rows assume the player hits below this total (gamble-math.md). 0 otherwise.
+var stand_at: int = 0
+## Nine Lives: the next bust this battle would be forgiven (gamble-math.md).
+var is_forgiveness_ready: bool = false
 
 
 ## Expected payout over all rows, before backfire.

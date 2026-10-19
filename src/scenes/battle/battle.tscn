@@ -14,6 +14,9 @@
 [ext_resource type="Resource" uid="uid://bxsx6sjx88274" path="res://src/content/moves/paw_roll.tres" id="12_paw"]
 [ext_resource type="Resource" uid="uid://dajebk568v1j7" path="res://src/content/moves/curl_up.tres" id="13_curl"]
 [ext_resource type="PackedScene" path="res://src/ui/pouch_bar.tscn" id="14_pouch"]
+[ext_resource type="PackedScene" path="res://src/ui/overlays/coin_overlay.tscn" id="15_coin"]
+[ext_resource type="PackedScene" path="res://src/ui/overlays/card_overlay.tscn" id="16_card"]
+[ext_resource type="PackedScene" path="res://src/ui/deck_counts.tscn" id="17_deck"]
 
 [sub_resource type="Theme" id="Theme_battle"]
 default_font_size = 10
@@ -166,6 +169,7 @@ offset_left = 470.0
 offset_top = 180.0
 offset_right = 600.0
 offset_bottom = 276.0
+grow_vertical = 0
 
 [node name="DiceOverlay" parent="." unique_id=254439175 instance=ExtResource("6_dice")]
 unique_name_in_owner = true
@@ -175,6 +179,33 @@ offset_left = 200.0
 offset_top = 84.0
 offset_right = 420.0
 offset_bottom = 194.0
+
+[node name="CoinOverlay" parent="." instance=ExtResource("15_coin")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 200.0
+offset_top = 84.0
+offset_right = 420.0
+offset_bottom = 194.0
+
+[node name="CardOverlay" parent="." instance=ExtResource("16_card")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 200.0
+offset_top = 84.0
+offset_right = 420.0
+offset_bottom = 194.0
+
+[node name="DeckCounts" parent="." instance=ExtResource("17_deck")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 16.0
+offset_top = 86.0
+offset_right = 196.0
+offset_bottom = 126.0
 
 [node name="EventPlayer" type="Node" parent="." unique_id=1882137244]
 unique_name_in_owner = true

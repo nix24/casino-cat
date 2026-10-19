@@ -47,31 +47,60 @@ static func backfire_cap(state: BattleState, ctx: BattleContext) -> int:
 ## The odds the player sees for [param gamble] right now, after Luck and statuses (PRD §6.0 rule 2).
 static func preview(gamble: GambleData, state: BattleState, ctx: BattleContext) -> GambleOdds:
 	var luck_now: int = luck(gamble.family, state, ctx)
-	var table: GambleOdds = odds(gamble, luck_now, status_mult(state), backfire_cap(state, ctx))
+	var table: GambleOdds = odds(
+		gamble,
+		luck_now,
+		status_mult(state),
+		backfire_cap(state, ctx),
+		state.deck,
+		not state.forgiveness_used
+	)
 	if state.guarantee_top_tier:
 		_guarantee_top(table)
 	return table
 
 
-## Lucky Charm (PRD §8.3): the best-paying row becomes certain, so the shown odds stay true.
+## Lucky Charm (PRD §8.3): the best-paying row that can happen becomes certain, so the shown odds
+## stay true.
 static func _guarantee_top(table: GambleOdds) -> void:
 	var top: GambleOddsRow = table.rows[0]
 	for row: GambleOddsRow in table.rows:
-		if row.payout > top.payout:
+		if row.probability > 0.0 and (row.payout > top.payout or top.probability <= 0.0):
 			top = row
 	for row: GambleOddsRow in table.rows:
 		row.probability = 1.0 if row == top else 0.0
 
 
-## Exact outcome table for [param gamble] at a fixed Luck and payout multiplier.
+## Exact outcome table for [param gamble] at a fixed Luck and payout multiplier. Cards odds read
+## the visible [param deck] (empty = a fresh 20) and whether Nine Lives' forgiveness is ready.
 static func odds(
-	gamble: GambleData, luck_points: int, payout_mult: float, max_backfire: int
+	gamble: GambleData,
+	luck_points: int,
+	payout_mult: float,
+	max_backfire: int,
+	deck: PackedInt32Array = PackedInt32Array(),
+	is_forgiveness_ready: bool = true,
 ) -> GambleOdds:
-	var dice: DiceGambleData = gamble as DiceGambleData
-	assert(dice != null, "only dice gambles have odds in T002")
 	var table := GambleOdds.new()
 	table.luck = luck_points
-	table.rows = DiceFamily.odds(dice, luck_points, payout_mult, max_backfire)
+	if gamble is DiceGambleData:
+		table.rows = DiceFamily.odds(
+			gamble as DiceGambleData, luck_points, payout_mult, max_backfire
+		)
+	elif gamble is CoinGambleData:
+		table.rows = CoinFamily.odds(
+			gamble as CoinGambleData, luck_points, payout_mult, max_backfire
+		)
+	elif gamble is CardGambleData:
+		var card: CardGambleData = gamble as CardGambleData
+		table.rows = CardFamily.odds(
+			card, deck, is_forgiveness_ready, luck_points, payout_mult, max_backfire
+		)
+		if card.mode == CardGambleData.Mode.BLACKJACK:
+			table.stand_at = CardFamily.STAND_AT
+			table.is_forgiveness_ready = is_forgiveness_ready
+	else:
+		assert(false, "no odds for gamble family %s" % gamble.family)
 	return table
 
 

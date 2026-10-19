@@ -10,9 +10,15 @@ func test_load_all_finds_starter_content() -> void:
 	assert_eq(
 		_ids_of_moves(db.all_moves()),
 		[
+			&"card_trick",
 			&"curl_up",
+			&"double_or_nothing",
 			&"dumpster_dive",
+			&"heads_up",
+			&"high_card",
+			&"hot_streak",
 			&"loaded_paws",
+			&"nine_lives",
 			&"paw_roll",
 			&"pounce",
 			&"scratch",
@@ -248,7 +254,7 @@ func test_moves_by_rarity_category() -> void:
 	)
 	assert_eq(
 		_ids_of_moves(db.moves_by(MoveData.Rarity.RARE, MoveData.Category.GAMBLE)),
-		[&"snake_eyes"],
+		[&"card_trick", &"hot_streak", &"snake_eyes"],
 		"rare gamble"
 	)
 	assert_eq(

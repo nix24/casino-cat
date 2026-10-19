@@ -62,6 +62,36 @@ static func parse_dice_faces(text: String) -> Array[int]:
 	return faces
 
 
+## Card values from a comma list such as "10,7" (decisions D37), each 1 to 10. Anything else gives
+## an empty array, so the caller can print usage.
+static func parse_card_values(text: String) -> Array[int]:
+	var values: Array[int] = []
+	for part: String in text.split(","):
+		var part_text: String = part.strip_edges()
+		if not part_text.is_valid_int():
+			return []
+		var value: int = part_text.to_int()
+		if value < 1 or value > CardFamily.CARD_VALUE_MAX:
+			return []
+		values.append(value)
+	return values
+
+
+## Coin sides from a list such as "H,H,T" (decisions D37): 1 for heads, 0 for tails. Anything else
+## gives an empty array, so the caller can print usage.
+static func parse_coin_sides(text: String) -> Array[int]:
+	var sides: Array[int] = []
+	for part: String in text.split(","):
+		match part.strip_edges().to_upper():
+			"H":
+				sides.append(CoinFamily.FORCED_HEADS)
+			"T":
+				sides.append(0)
+			_:
+				return []
+	return sides
+
+
 ## One line that shows every field of [param event] the kind uses, for `log` and the replay tests.
 static func event_line(event: BattleEvent) -> String:
 	var fields: PackedStringArray = [
@@ -85,4 +115,5 @@ static func event_line(event: BattleEvent) -> String:
 		fields.append("indices=%s" % str(gamble.indices))
 		fields.append("tier=%s" % gamble.tier)
 		fields.append("payout=%d" % gamble.payout)
+		fields.append("is_heads=%s" % gamble.is_heads)
 	return " ".join(fields)

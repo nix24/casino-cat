@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="RelicData" format=3]
+
+[ext_resource type="Script" uid="uid://djwp6uy1t41k7" path="res://src/data/relic_data.gd" id="1_data"]
+[ext_resource type="Script" uid="uid://cxhpky0uq84gs" path="res://src/data/hook_data.gd" id="2_hook"]
+
+[sub_resource type="Resource" id="HookData_gold_tooth_0"]
+script = ExtResource("2_hook")
+trigger = 2
+op = 4
+amount = 3
+family = &"coin"
+condition = 4
+
+[resource]
+script = ExtResource("1_data")
+id = &"gold_tooth"
+display_name = "Gold Tooth"
+build_tag = &"high_roller"
+description = "+3 damage per consecutive coin head this battle."
+flavor = "Shiny smile, shinier payouts."
+hooks = Array[ExtResource("2_hook")]([SubResource("HookData_gold_tooth_0")])

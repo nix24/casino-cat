@@ -1,7 +1,9 @@
 [gd_resource type="Resource" script_class="EnemyData" format=3 uid="uid://dsjfkdrovtgl5"]
 
 [ext_resource type="Script" uid="uid://d1pvbvd3hmqf" path="res://src/data/enemy_data.gd" id="1_enemy"]
+[ext_resource type="Script" uid="uid://c5u7itf25g64" path="res://src/data/intent_override_data.gd" id="1_mge80"]
 [ext_resource type="Script" uid="uid://d4k8mronslp1k" path="res://src/data/intent_data.gd" id="2_intent"]
+[ext_resource type="Script" uid="uid://cum8bbmmpwhi" path="res://src/data/boss_phase_data.gd" id="3_lb5ns"]
 
 [sub_resource type="Resource" id="IntentData_rat_1"]
 script = ExtResource("2_intent")

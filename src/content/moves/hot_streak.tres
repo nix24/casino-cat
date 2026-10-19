@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" uid="uid://dfymbb4vy2y7s" path="res://src/data/move_data.gd" id="1_move"]
+[ext_resource type="Script" path="res://src/data/coin_gamble_data.gd" id="2_coin"]
+
+[sub_resource type="Resource" id="CoinGambleData_hot_streak"]
+script = ExtResource("2_coin")
+mode = 2
+start_damage = 0
+per_head_damage = 9
+max_heads = 5
+backfire = 0
+tails_mp = 0
+family = &"coin"
+
+[resource]
+script = ExtResource("1_move")
+id = &"hot_streak"
+display_name = "Hot Streak"
+suit = 3
+category = 2
+rarity = 3
+base_damage = 9
+mp_cost = 35
+gamble = SubResource("CoinGambleData_hot_streak")
+description = "Flip up to {max_flips} times. Each head deals {damage} and adds a Streak."
+flavor = "Keep flipping. Hot streaks don't ask."

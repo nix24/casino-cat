@@ -115,6 +115,11 @@ static func _rejection_reason(
 	if action.kind == PlayerAction.Kind.GAMBLE_CHOICE:
 		if state.pending == null:
 			return &"no_gamble_pending"
+		match state.pending.family:
+			&"coin":
+				return CoinFamily.choice_rejection(action.gamble_choice)
+			&"cards":
+				return CardFamily.choice_rejection(state.pending, action.gamble_choice, ctx)
 		return DiceFamily.choice_rejection(state.pending, action.gamble_choice, state)
 	if state.outcome != BattleState.Outcome.ONGOING:
 		return &"battle_over"
@@ -450,8 +455,9 @@ static func _resolve_turn(
 	return events
 
 
-## Opens a gamble (PRD §6.0 rule 2). The odds are snapshotted, the queued forced faces move into the
-## session, and the family rolls. The turn waits in state.pending for a GAMBLE_CHOICE.
+## Opens a gamble (PRD §6.0 rule 2). The odds are snapshotted, the queued forced outcomes move into
+## the session, and the family rolls. The turn waits in state.pending for a GAMBLE_CHOICE, unless
+## the family finished without one (Heads Up, Hot Streak).
 static func _open_gamble(
 	state: BattleState,
 	move: MoveData,
@@ -467,8 +473,13 @@ static func _open_gamble(
 	session.forced = ctx.forced.duplicate()
 	ctx.forced.clear()
 	if state.guarantee_top_tier:
-		# Lucky Charm: the faces of the top tier, shown in the preview at 100% (PRD §8.3).
-		session.forced = DiceFamily.top_tier_faces(move.gamble as DiceGambleData)
+		# Lucky Charm: the top tier, shown in the preview at 100% (PRD §8.3). Dice need its faces;
+		# a coin already flips heads at the snapshot's 100%.
+		session.forced.clear()
+		if move.gamble is DiceGambleData:
+			session.forced = DiceFamily.top_tier_faces(move.gamble as DiceGambleData)
+		elif move.gamble is CardGambleData:
+			session.forced = CardFamily.top_tier_cards(move.gamble as CardGambleData, session.odds)
 		state.guarantee_top_tier = false
 	state.pending = session
 
@@ -479,26 +490,55 @@ static func _open_gamble(
 	)
 	var started := BattleEvent.new(BattleEvent.Kind.GAMBLE_STARTED)
 	started.gamble = GambleEventData.new()
+	started.reason = session.family
 	started.gamble.odds = session.odds
 	events.append(started)
-	events.append_array(DiceFamily.start(session, ctx, rng))
-	return events
+	match session.family:
+		&"coin":
+			events.append_array(CoinFamily.start(session, state, ctx, rng))
+		&"cards":
+			events.append_array(CardFamily.start(session, state, ctx, rng))
+		_:
+			events.append_array(DiceFamily.start(session, ctx, rng))
+	return _settle_if_finished(state, ctx, events)
 
 
-## A GAMBLE_CHOICE with dice listed rerolls them. An empty choice keeps the faces and resolves.
+## Continues the pending gamble with the player's choice. For dice, an empty choice keeps the faces
+## and resolves; listed dice reroll.
 static func _gamble_choice(
 	state: BattleState, choice: GambleChoice, ctx: BattleContext, rng: SeededRng
 ) -> Array[BattleEvent]:
+	var session: GambleSession = state.pending
+	match session.family:
+		&"coin":
+			var coin_events: Array[BattleEvent] = CoinFamily.choose(
+				session, choice, state, ctx, rng
+			)
+			return _settle_if_finished(state, ctx, coin_events)
+		&"cards":
+			var card_events: Array[BattleEvent] = CardFamily.choose(
+				session, choice, state, ctx, rng
+			)
+			return _settle_if_finished(state, ctx, card_events)
 	if choice.reroll_dice.is_empty():
 		return _keep_gamble(state, ctx)
-	return DiceFamily.choose(state.pending, choice, state, rng)
+	return DiceFamily.choose(session, choice, state, rng)
+
+
+## Settles the pending gamble once its family has finished it; otherwise it keeps waiting.
+static func _settle_if_finished(
+	state: BattleState, ctx: BattleContext, events: Array[BattleEvent]
+) -> Array[BattleEvent]:
+	if not state.pending.finished:
+		return events
+	events.append_array(_settle_gamble(state, ctx))
+	return events
 
 
 ## Resolves the held faces. The payout and backfire come from the same row the odds table showed
 ## (PRD §6.0 rule 2), then the turn's shared tail runs.
 static func _keep_gamble(state: BattleState, ctx: BattleContext) -> Array[BattleEvent]:
 	var session: GambleSession = state.pending
-	var move: MoveData = ctx.moves[session.move_id]
 	var dice: DiceGambleData = DiceFamily.gamble_of(session, ctx)
 	var row: GambleOddsRow = DiceFamily.score(
 		dice,
@@ -510,21 +550,33 @@ static func _keep_gamble(state: BattleState, ctx: BattleContext) -> Array[Battle
 	session.tier = row.label
 	session.damage = row.payout
 	session.backfire = row.backfire
+	session.due_step = row.due_step
 	session.finished = true
-	state.pending = null
+	return _settle_gamble(state, ctx)
 
+
+## Applies a finished session's results in a fixed order: GAMBLE_RESOLVED, damage, MP, backfire,
+## Due. Then the turn's shared tail runs. Every family ends here.
+static func _settle_gamble(state: BattleState, ctx: BattleContext) -> Array[BattleEvent]:
+	var session: GambleSession = state.pending
+	var move: MoveData = ctx.moves[session.move_id]
+	state.pending = null
 	var events: Array[BattleEvent] = []
 	var resolved := BattleEvent.new(BattleEvent.Kind.GAMBLE_RESOLVED)
-	resolved.amount = row.payout
+	resolved.reason = session.family
+	resolved.amount = session.damage
 	resolved.gamble = GambleEventData.new()
-	resolved.gamble.tier = row.label
-	resolved.gamble.payout = row.payout
+	resolved.gamble.tier = session.tier
+	resolved.gamble.payout = session.damage
+	resolved.gamble.forgiven = session.forgiven
 	events.append(resolved)
-	if row.payout > 0:
-		_deal_damage(state.enemy, BattleEvent.Actor.CAT, row.payout, events)
-	if row.backfire > 0:
-		_backfire(state.cat, row.backfire, events)
-	_settle_due(session.family, row.due_step, ctx, events)
+	if session.damage > 0:
+		_deal_damage(state.enemy, BattleEvent.Actor.CAT, session.damage, events)
+	if session.mp_gain > 0:
+		_change_mp(state, ctx.tuning, BattleEvent.Actor.CAT, &"gamble", session.mp_gain, events)
+	if session.backfire > 0:
+		_backfire(state.cat, session.backfire, events)
+	_settle_due(session.family, session.due_step, ctx, events)
 	return _resolve_turn(state, move, ctx, events)
 
 

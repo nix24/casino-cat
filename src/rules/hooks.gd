@@ -38,7 +38,7 @@ static func _apply_all(
 	for hook: HookData in hooks:
 		if hook.trigger != trigger or not _fires(hook, state, hook_ctx):
 			continue
-		_apply(hook, result)
+		_apply(hook, _amount(hook, hook_ctx), result)
 		fired = true
 	return fired
 
@@ -54,34 +54,43 @@ static func _fires(hook: HookData, state: BattleState, hook_ctx: HookContext) ->
 		HookData.Condition.HAS_SUIT_ADVANTAGE:
 			var suit: Suit.Type = BattleRules.suit_of(hook_ctx.move, hook_ctx.move_instance)
 			return Suit.damage_multiplier(suit, state.enemy.suit) > 1.0
+		HookData.Condition.PER_STREAK:
+			return hook_ctx.consecutive_heads > 0
 	assert(false, "hook condition %d is not implemented yet" % hook.condition)
 	return false
 
 
-static func _apply(hook: HookData, result: HookResult) -> void:
+## The hook's amount, scaled per head in a row for PER_STREAK (Gold Tooth, D22).
+static func _amount(hook: HookData, hook_ctx: HookContext) -> int:
+	if hook.condition == HookData.Condition.PER_STREAK:
+		return hook.amount * hook_ctx.consecutive_heads
+	return hook.amount
+
+
+static func _apply(hook: HookData, amount: int, result: HookResult) -> void:
 	match hook.op:
 		HookData.Op.ADD_MAX_HP:
-			result.max_hp += hook.amount
+			result.max_hp += amount
 		HookData.Op.ADD_SHIELD:
-			result.shield += hook.amount
+			result.shield += amount
 		HookData.Op.HEAL:
-			result.heal += hook.amount
+			result.heal += amount
 		HookData.Op.GAIN_MP:
-			result.gain_mp += hook.amount
+			result.gain_mp += amount
 		HookData.Op.ADD_FLAT_DAMAGE:
-			result.flat_damage += hook.amount
+			result.flat_damage += amount
 		HookData.Op.MULT_DAMAGE:
-			result.damage_mult_pct = result.damage_mult_pct * hook.amount / 100
+			result.damage_mult_pct = result.damage_mult_pct * amount / 100
 		HookData.Op.ADD_LUCK:
-			result.luck += hook.amount
+			result.luck += amount
 		HookData.Op.ADD_REROLLS:
-			result.rerolls += hook.amount
+			result.rerolls += amount
 		HookData.Op.MP_COST_DELTA:
-			result.mp_cost_delta += hook.amount
+			result.mp_cost_delta += amount
 		HookData.Op.REPEAT_PENALTY_SHIFT:
-			result.repeat_shift += hook.amount
+			result.repeat_shift += amount
 		HookData.Op.FREE_PEEK:
-			result.free_peeks += hook.amount
+			result.free_peeks += amount
 		HookData.Op.CHANGE_SUIT:
 			# The suit lives on MoveInstance.suit_override; the hook only marks the modifier.
 			pass

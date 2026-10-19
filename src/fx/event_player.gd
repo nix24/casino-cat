@@ -49,6 +49,14 @@ const DURATIONS: Dictionary[BattleEvent.Kind, float] = {
 	BattleEvent.Kind.SUIT_OVERRIDE_EXPIRED: 0.0,
 	BattleEvent.Kind.PHASE_CHANGED: 0.8,
 	BattleEvent.Kind.ITEM_FOUND: 0.3,
+	# Spin 0.3 s plus land 0.1 s (T021).
+	BattleEvent.Kind.COIN_FLIPPED: 0.4,
+	BattleEvent.Kind.STREAK_CHANGED: 0.2,
+	BattleEvent.Kind.DECK_SHUFFLED: 0.3,
+	# Slide from the shoe 0.3 s plus flip 0.2 s (T022).
+	BattleEvent.Kind.CARD_DRAWN: 0.5,
+	BattleEvent.Kind.CARD_SAVED: 0.35,
+	BattleEvent.Kind.CARDS_REORDERED: 0.3,
 }
 
 ## 0 = 1×, 1 = 2×, 2 = instant. BattleScene sets it before the first enqueue.

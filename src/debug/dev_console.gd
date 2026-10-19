@@ -5,9 +5,7 @@ extends Control
 
 const DEBUG_LOG_PATH: String = "user://debug.log"
 const GIVE_KINDS: PackedStringArray = ["move", "relic", "item", "mod"]
-const FORCE_FAMILIES_LATER: PackedStringArray = [
-	"coin", "cards", "cups", "scratch", "ticket", "ante"
-]
+const FORCE_FAMILIES_LATER: PackedStringArray = ["cups", "scratch", "ticket", "ante"]
 const NO_RUN_MESSAGE: String = "no run; start one with seed <text>"
 
 ## Set by `god`. Applied to every battle that starts while it is on, and to the live one.
@@ -198,27 +196,27 @@ func _force(args: PackedStringArray) -> void:
 		_print_usage("force")
 		return
 	var family: String = args[0]
-	if family == "dice":
-		_force_dice(args.slice(1))
-	elif FORCE_FAMILIES_LATER.has(family):
+	if FORCE_FAMILIES_LATER.has(family):
 		_print_line("not available yet: force %s" % family, true)
-	else:
-		_print_usage("force")
-
-
-func _force_dice(args: PackedStringArray) -> void:
-	var faces: Array[int] = []
-	if args.size() == 1:
-		faces = DebugCommands.parse_dice_faces(args[0])
-	if faces.is_empty():
+		return
+	var outcomes: Array[int] = []
+	if args.size() == 2:
+		match family:
+			"dice":
+				outcomes = DebugCommands.parse_dice_faces(args[1])
+			"coin":
+				outcomes = DebugCommands.parse_coin_sides(args[1])
+			"cards":
+				outcomes = DebugCommands.parse_card_values(args[1])
+	if outcomes.is_empty():
 		_print_usage("force")
 		return
 	var battle: BattleScene = _current_battle()
 	if battle == null:
-		_print_line("force dice: only in a battle", true)
+		_print_line("force %s: only in a battle" % family, true)
 		return
-	battle.debug_context().forced.assign(faces)
-	_print_line("force dice %s" % str(faces))
+	battle.debug_context().forced.assign(outcomes)
+	_print_line("force %s %s" % [family, str(outcomes)])
 
 
 func _enemy(args: PackedStringArray) -> void:
@@ -351,7 +349,7 @@ func _usage_of(command_name: String) -> String:
 		"mp":
 			usage = "mp <n>  (battle only)"
 		"force":
-			usage = "force dice <a,b,...>  (battle only; faces 1-6)"
+			usage = "force dice <a,b,...> | coin <H,T,...> | cards <10,7,...>  (battle only)"
 		"goto":
 			usage = "goto <row> <col>"
 		"node":

@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" uid="uid://dfymbb4vy2y7s" path="res://src/data/move_data.gd" id="1_move"]
+[ext_resource type="Script" path="res://src/data/card_gamble_data.gd" id="2_card"]
+
+[sub_resource type="Resource" id="CardGambleData_card_trick"]
+script = ExtResource("2_card")
+mode = 2
+multiplier = 2.5
+bust_backfire = 0
+blackjack_damage = 0
+family = &"cards"
+
+[resource]
+script = ExtResource("1_move")
+id = &"card_trick"
+display_name = "Card Trick"
+suit = 3
+category = 2
+rarity = 3
+mp_cost = 30
+gamble = SubResource("CardGambleData_card_trick")
+description = "Draw 3. Deal one card's value × {multiplier}, then put the other two back on top in your order."
+flavor = "Pick a winner, stack the losers."

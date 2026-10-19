@@ -11,3 +11,5 @@ var move_instance: MoveInstance
 var family: StringName = &""
 ## HP damage the move dealt, for ON_DAMAGE_DEALT.
 var damage: int = 0
+## Coin heads in a row this battle that a coin payout counts, for PER_STREAK (Gold Tooth, D22).
+var consecutive_heads: int = 0

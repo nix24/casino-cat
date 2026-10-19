@@ -25,6 +25,25 @@ const BOSS_REWARD_TAKE_FORMAT: String = "Take %s (%s)"
 const BOSS_REWARD_SKIP_FORMAT: String = "Skip (+%d Purrls)"
 const BOSS_REWARD_NEXT_ACT: String = "Then heal 50% and head for the next act."
 const ITEM_FOUND_FORMAT: String = "Found %s!"
+const COIN_CASH_OUT: String = "Cash out"
+const COIN_FLIP_AGAIN: String = "Flip again"
+const COIN_HEADS: String = "H"
+const COIN_TAILS: String = "T"
+const COIN_UNFLIPPED: String = "?"
+const COIN_PENDING_FORMAT: String = "Pending %d"
+const STREAK_FORMAT: String = "Streak %d"
+const CARDS_HIT: String = "Hit"
+const CARDS_STAND: String = "Stand"
+const CARDS_SWAP: String = "Swap order"
+const CARDS_CONFIRM: String = "Confirm order"
+const CARDS_PICK: String = "Pick a card to keep"
+const CARDS_ORDER_FORMAT: String = "Top: %d, then %d"
+const CARDS_SAVED_FORMAT: String = "Saved: %d"
+const NINE_LIVES_FORGIVEN: String = "Nine lives: forgiven"
+const ODDS_STAND_AT_FORMAT: String = "If you hit below %d:"
+const ODDS_FORGIVENESS_READY: String = "Nine lives: next bust is forgiven"
+## A gamble result line: "2 heads → 32".
+const GAMBLE_RESULT_FORMAT: String = "%s → %d"
 ## Special intents by special_id (PRD §9.3).
 const SPECIAL_INTENT_TEXT: Dictionary[StringName, String] = {
 	&"cheat_suit": "★ Cheat: takes the suit that beats yours",
@@ -271,6 +290,25 @@ static func status_text(statuses: Dictionary[StringName, int]) -> String:
 ## The Due meter as pips: "Due ●●○○" for 2 of 4 (PRD §6.0 rule 7).
 static func due_text(pips: int, pips_max: int) -> String:
 	return "Due %s%s" % [PIP_FULL.repeat(pips), PIP_EMPTY.repeat(pips_max - pips)]
+
+
+## Nine Lives' running line: "Total 17 · Bust next: 39%" (PRD §6.3). No bust line at 21 or more.
+static func cards_total_text(total: int, bust_chance: float) -> String:
+	if total >= CardFamily.BLACKJACK_TOTAL:
+		return "Total %d" % total
+	return "Total %d · Bust next: %d%%" % [total, roundi(bust_chance * 100.0)]
+
+
+## One deck count: "7 ●○" for one 7 left of two (PRD §6.3).
+static func deck_count_text(value: int, count: int) -> String:
+	return (
+		"%d %s%s"
+		% [
+			value,
+			PIP_FULL.repeat(count),
+			PIP_EMPTY.repeat(maxi(CardFamily.COPIES_PER_VALUE - count, 0)),
+		]
+	)
 
 
 static func speed_text(at_speed: int) -> String:

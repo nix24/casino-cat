@@ -469,6 +469,13 @@ func _check_tuning_wiring(messages: Array[String]) -> void:
 		"GambleRules.PROBABILITY_CAP",
 		messages
 	)
+	_check_wired(
+		_tuning.coin_heads_base,
+		CoinFamily.HEADS_BASE,
+		"coin_heads_base",
+		"CoinFamily.HEADS_BASE",
+		messages
+	)
 
 
 static func _check_wired(
@@ -483,19 +490,24 @@ static func _check_wired(
 		)
 
 
-## GAMBLE moves need gamble data (R8). A dice gamble's base damage must match the move's.
+## GAMBLE moves need gamble data (R8). The damage the gamble data starts from must match the
+## move's base_damage (content-registry): a dice base, or a coin's first head.
 static func _check_gamble_base_damage(move_data: MoveData, messages: Array[String]) -> void:
 	if move_data.category != MoveData.Category.GAMBLE:
 		return
 	if move_data.gamble == null:
 		messages.append("move %s: GAMBLE move has no gamble data" % move_data.id)
 		return
-	var dice: DiceGambleData = move_data.gamble as DiceGambleData
-	if dice != null and dice.base_damage != move_data.base_damage:
+	var gamble_damage: int = move_data.base_damage
+	if move_data.gamble is DiceGambleData:
+		gamble_damage = (move_data.gamble as DiceGambleData).base_damage
+	elif move_data.gamble is CoinGambleData:
+		gamble_damage = CoinFamily.first_head_damage(move_data.gamble as CoinGambleData)
+	if gamble_damage != move_data.base_damage:
 		messages.append(
 			(
 				"move %s: base_damage %d differs from gamble base_damage %d"
-				% [move_data.id, move_data.base_damage, dice.base_damage]
+				% [move_data.id, move_data.base_damage, gamble_damage]
 			)
 		)
 

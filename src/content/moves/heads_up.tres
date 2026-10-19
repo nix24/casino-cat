@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" uid="uid://dfymbb4vy2y7s" path="res://src/data/move_data.gd" id="1_move"]
+[ext_resource type="Script" path="res://src/data/coin_gamble_data.gd" id="2_coin"]
+
+[sub_resource type="Resource" id="CoinGambleData_heads_up"]
+script = ExtResource("2_coin")
+mode = 1
+start_damage = 14
+per_head_damage = 0
+max_heads = 1
+backfire = 0
+tails_mp = 15
+family = &"coin"
+
+[resource]
+script = ExtResource("1_move")
+id = &"heads_up"
+display_name = "Heads Up"
+suit = 3
+category = 2
+rarity = 1
+base_damage = 14
+mp_cost = 15
+gamble = SubResource("CoinGambleData_heads_up")
+description = "Heads deals {damage}. Tails gains {mp_gain} MP."
+flavor = "Heads I win, tails I snack."

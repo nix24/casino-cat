@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" uid="uid://dfymbb4vy2y7s" path="res://src/data/move_data.gd" id="1_move"]
+[ext_resource type="Script" path="res://src/data/card_gamble_data.gd" id="2_card"]
+
+[sub_resource type="Resource" id="CardGambleData_nine_lives"]
+script = ExtResource("2_card")
+mode = 0
+multiplier = 1.0
+bust_backfire = 5
+blackjack_damage = 30
+family = &"cards"
+
+[resource]
+script = ExtResource("1_move")
+id = &"nine_lives"
+display_name = "Nine Lives"
+suit = 3
+category = 2
+rarity = 2
+mp_cost = 35
+gamble = SubResource("CardGambleData_nine_lives")
+description = "Stand to deal your total. Exactly 21 deals {blackjack_damage}. A bust backfires {backfire}."
+flavor = "Nine lives, one terrible habit."

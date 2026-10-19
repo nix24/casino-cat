@@ -41,3 +41,12 @@ var weaken_next_attack_pct: int = 0
 ## Laser Pointer: turns left on the forced enemy suit, and the suit to restore after.
 var suit_override_turns: int = 0
 var suit_before_override: Suit.Type = Suit.Type.CLUBS
+## Hot Streak stacks: +2 damage per stack on coin payouts until any tails (PRD §6.2, D22).
+var streak: int = 0
+## Heads in a row across every coin move this battle; any tails resets it (Gold Tooth, D22).
+var consecutive_heads: int = 0
+## The battle deck, top = last element (PRD §6.3). Empty until the first card draw shuffles a
+## fresh 20 from the gamble stream; empty again when it runs out.
+var deck: PackedInt32Array = PackedInt32Array()
+## Nine Lives forgave a bust this battle (PRD §6.3).
+var forgiveness_used: bool = false

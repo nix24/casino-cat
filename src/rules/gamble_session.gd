@@ -21,6 +21,14 @@ var mp_gain: int = 0
 var shield_gain: int = 0
 ## Label of the resolved tier, set when the gamble resolves.
 var tier: StringName = &""
+## Due step of the resolved outcome, set when the gamble resolves (PRD §6.0 rule 7).
+var due_step: GambleData.DueStep = GambleData.DueStep.NONE
+## Heads landed so far in this use (Coin).
+var heads: int = 0
+## Cards drawn into the hand, in draw order (Cards).
+var hand: PackedInt32Array = PackedInt32Array()
+## Nine Lives forgave this bust (decisions §C).
+var forgiven: bool = false
 var finished: bool = false
 ## Faces the next draws take, in order, before the RNG (decisions §D). Copied from ctx.forced.
 var forced: Array[int] = []

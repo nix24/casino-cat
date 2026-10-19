@@ -57,6 +57,29 @@ func test_from_dict_after_json() -> void:
 	assert_eq(Array(choice.gamble_choice.reroll_dice), [1, 3], "dice after JSON")
 
 
+func test_coin_and_card_calls_survive_json() -> void:
+	var action := PlayerAction.new()
+	action.kind = PlayerAction.Kind.GAMBLE_CHOICE
+	action.gamble_choice.coin = GambleChoice.CoinCall.CASH_OUT
+	var entry: Dictionary = JSON.parse_string(JSON.stringify(ActionLog.to_dict(action)))
+	var back: PlayerAction = ActionLog.from_dict(entry)
+	assert_eq(back.gamble_choice.coin, GambleChoice.CoinCall.CASH_OUT, "coin call")
+	assert_true(not ActionLog.to_dict(_choice_action([1])).has("coin"), "dice entries unchanged")
+	var trick := PlayerAction.new()
+	trick.kind = PlayerAction.Kind.GAMBLE_CHOICE
+	trick.gamble_choice.trick_pick = 2
+	trick.gamble_choice.trick_order = PackedInt32Array([1, 0])
+	var trick_entry: Dictionary = JSON.parse_string(JSON.stringify(ActionLog.to_dict(trick)))
+	var trick_back: PlayerAction = ActionLog.from_dict(trick_entry)
+	assert_eq(trick_back.gamble_choice.trick_pick, 2, "trick pick")
+	assert_eq(trick_back.gamble_choice.trick_order, PackedInt32Array([1, 0]), "trick order")
+	var hit := PlayerAction.new()
+	hit.kind = PlayerAction.Kind.GAMBLE_CHOICE
+	hit.gamble_choice.cards = GambleChoice.CardCall.HIT
+	var hit_entry: Dictionary = JSON.parse_string(JSON.stringify(ActionLog.to_dict(hit)))
+	assert_eq(ActionLog.from_dict(hit_entry).gamble_choice.cards, GambleChoice.CardCall.HIT, "hit")
+
+
 func test_unknown_kind_returns_null() -> void:
 	var unknown: Dictionary = {"kind": "buy"}
 	assert_true(ActionLog.from_dict(unknown) == null, "unknown kind gives null")

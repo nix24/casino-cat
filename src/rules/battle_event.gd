@@ -20,6 +20,14 @@ extends RefCounted
 ## - ITEM_FOUND: reason = item id, amount = pouch slot it went into (Dumpster Dive, T019).
 ## - SUIT_OVERRIDE_EXPIRED: Laser Pointer ended; a SUIT_SHIFTED (actor ENEMY) follows.
 ## - REROLLS_CHANGED: amount is the rerolls left. Gamble detail lives in `gamble` (T002).
+## - GAMBLE_STARTED, GAMBLE_AWAITING_CHOICE: reason is the gamble family.
+## - COIN_FLIPPED: amount is the pending damage after the flip, gamble.is_heads the side (T021).
+## - STREAK_CHANGED: amount is the Hot Streak stacks after the change (decisions D22).
+## - DECK_SHUFFLED: amount is the deck size (20). CARD_DRAWN: amount is the value drawn.
+##   CARD_SAVED: amount is the value Luck turned the bust card into. CARDS_REORDERED: gamble.cards
+##   are the cards put back, top first. Every card event carries gamble.cards (the hand),
+##   gamble.counts, and gamble.bust_chance (T022).
+## - MP_CHANGED with reason gamble: MP a gamble outcome paid (Heads Up tails).
 
 enum Kind {
 	BATTLE_STARTED,
@@ -54,6 +62,12 @@ enum Kind {
 	SUIT_OVERRIDE_EXPIRED,
 	PHASE_CHANGED,
 	ITEM_FOUND,
+	COIN_FLIPPED,
+	STREAK_CHANGED,
+	DECK_SHUFFLED,
+	CARD_DRAWN,
+	CARD_SAVED,
+	CARDS_REORDERED,
 }
 enum Actor { CAT, ENEMY }
 

@@ -34,7 +34,7 @@ static func to_dict(action: PlayerAction) -> Dictionary:
 		PlayerAction.Kind.USE_ITEM:
 			return {"kind": "item", "slot": action.pouch_slot, "choice": action.choice}
 		_:
-			return {"kind": "choice", "reroll_dice": Array(action.gamble_choice.reroll_dice)}
+			return _choice_dict(action.gamble_choice)
 
 
 ## Rebuilds the action that [method to_dict] wrote. Returns null for an unknown kind; the caller
@@ -59,6 +59,29 @@ static func from_dict(entry: Dictionary) -> PlayerAction:
 			for value: Variant in dice:
 				var face: float = value
 				action.gamble_choice.reroll_dice.append(int(face))
+			var coin: float = entry.get("coin", GambleChoice.CoinCall.NONE)
+			action.gamble_choice.coin = int(coin) as GambleChoice.CoinCall
+			var cards: float = entry.get("cards", GambleChoice.CardCall.NONE)
+			action.gamble_choice.cards = int(cards) as GambleChoice.CardCall
+			var pick: float = entry.get("trick_pick", -1)
+			action.gamble_choice.trick_pick = int(pick)
+			var order: Array = entry.get("trick_order", [])
+			for value: Variant in order:
+				var index: float = value
+				action.gamble_choice.trick_order.append(int(index))
 		_:
 			return null
 	return action
+
+
+## A gamble choice keeps only the fields its family uses, so dice entries stay as they were.
+static func _choice_dict(choice: GambleChoice) -> Dictionary:
+	var entry: Dictionary = {"kind": "choice", "reroll_dice": Array(choice.reroll_dice)}
+	if choice.coin != GambleChoice.CoinCall.NONE:
+		entry["coin"] = choice.coin
+	if choice.cards != GambleChoice.CardCall.NONE:
+		entry["cards"] = choice.cards
+	if choice.trick_pick >= 0:
+		entry["trick_pick"] = choice.trick_pick
+		entry["trick_order"] = Array(choice.trick_order)
+	return entry

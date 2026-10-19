@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="MoveData" format=3]
+
+[ext_resource type="Script" uid="uid://dfymbb4vy2y7s" path="res://src/data/move_data.gd" id="1_move"]
+[ext_resource type="Script" path="res://src/data/coin_gamble_data.gd" id="2_coin"]
+
+[sub_resource type="Resource" id="CoinGambleData_double_or_nothing"]
+script = ExtResource("2_coin")
+mode = 0
+start_damage = 16
+per_head_damage = 0
+max_heads = 4
+backfire = 3
+tails_mp = 0
+family = &"coin"
+
+[resource]
+script = ExtResource("1_move")
+id = &"double_or_nothing"
+display_name = "Double or Nothing"
+suit = 3
+category = 2
+rarity = 1
+base_damage = 16
+mp_cost = 25
+gamble = SubResource("CoinGambleData_double_or_nothing")
+description = "Heads starts at {damage} and doubles per flip, up to {max_heads} heads. Tails deals 0 and backfires {backfire}."
+flavor = "Double or nothing, sweetheart."

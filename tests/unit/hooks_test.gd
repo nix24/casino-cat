@@ -120,9 +120,9 @@ func test_peeking_monocle_is_free_peek_hook() -> void:
 	assert_eq(relic.hooks[0].family, &"cups", "never fires on dice")
 
 
-func test_six_relics_have_no_negative_amounts() -> void:
+func test_relics_have_no_negative_amounts() -> void:
 	var relics: Array[RelicData] = ContentDb.load_all().all_relics()
-	assert_eq(relics.size(), 6)
+	assert_eq(relics.size(), 7, "T013's six plus gold_tooth (D4)")
 	for relic: RelicData in relics:
 		assert_true(not relic.description.is_empty(), "%s description" % relic.id)
 		for hook: HookData in relic.hooks:

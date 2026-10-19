@@ -10,4 +10,6 @@ var probability: float = 0.0
 var payout: int = 0
 ## HP the cat loses on this row, after the backfire cap.
 var backfire: int = 0
+## MP the cat gains on this row (Heads Up tails).
+var mp_gain: int = 0
 var due_step: GambleData.DueStep = GambleData.DueStep.NONE
