@@ -382,7 +382,7 @@ func _relic_name(relic_id: StringName) -> String:
 
 func _show_move_used(event: BattleEvent) -> void:
 	var move: MoveData = _ctx.moves[event.move_id]
-	_cat_attack_suit = move.suit
+	_cat_attack_suit = BattleRules.suit_of(move, _ctx.loadout[_last_slot])
 	_action_label.text = move.display_name
 
 

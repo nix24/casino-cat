@@ -3,7 +3,7 @@ extends RefCounted
 ## Both saves as one save code (PRD §17.4, D55): {"run": <run dict or null>, "meta": <meta dict>}
 ## in the D40 "CC1:" format. Pure: the caller does the file writes.
 
-enum Error { NONE, BAD_CODE, TOO_NEW }
+enum Error { NONE, BAD_CODE, TOO_NEW, WRITE_FAILED }
 
 
 ## What import_code found. [member run] is {} when the code carries no run.

@@ -67,6 +67,23 @@ func test_battle_speed_clamped() -> void:
 	assert_eq(settings.battle_speed, 2)
 
 
+func test_wrong_types_keep_defaults() -> void:
+	_clear_file()
+	var file := FileAccess.open(TEST_PATH, FileAccess.WRITE)
+	file.store_string(
+		'[settings]\nmaster_volume="loud"\nmusic_volume=0\nscreen_shake=1\nbattle_speed="fast"\n'
+	)
+	file.close()
+	var settings := SETTINGS_SCRIPT.new()
+	settings.config_path = TEST_PATH
+	settings.load_from_disk()
+	assert_eq(settings.master_volume, 1.0, "a string volume keeps the default")
+	assert_eq(settings.music_volume, 0.0, "a whole-number volume still loads")
+	assert_true(settings.screen_shake, "an int toggle keeps the default")
+	assert_eq(settings.battle_speed, 0, "a string speed keeps the default")
+	_clear_file()
+
+
 func _clear_file() -> void:
 	if FileAccess.file_exists(TEST_PATH):
 		DirAccess.remove_absolute(TEST_PATH)

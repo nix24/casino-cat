@@ -34,7 +34,7 @@ func can_pay() -> bool:
 ## against this suit. Static so tests can check the text without a scene tree.
 static func preview_lines(move_data: MoveData, move_preview: MovePreview) -> PackedStringArray:
 	var lines := PackedStringArray()
-	lines.append("%s %s" % [move_data.display_name, Strings.suit_glyph(move_data.suit)])
+	lines.append("%s %s" % [move_data.display_name, Strings.suit_glyph(move_preview.suit)])
 	lines.append(_effect_line(move_data, move_preview))
 	lines.append("their hit %s" % Strings.mult(move_preview.incoming_mult))
 	return lines

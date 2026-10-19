@@ -183,6 +183,28 @@ func test_import_bad_code_changes_nothing() -> void:
 	_free_game(game)
 
 
+func test_import_reports_a_failed_write() -> void:
+	_clear_files()
+	var source := GAME_SCRIPT.new()
+	source.save_store.base_dir = TEST_DIR
+	_root().add_child(source)
+	source._start_run("KITTY-7731")
+	var code: String = source.save_code()
+	_free_game(source)
+	# A file where the save folder should be makes every write fail.
+	var blocked_dir: String = TEST_DIR.path_join("blocked")
+	DirAccess.make_dir_recursive_absolute(TEST_DIR)
+	FileAccess.open(blocked_dir, FileAccess.WRITE).close()
+	var target := GAME_SCRIPT.new()
+	target.save_store.base_dir = blocked_dir
+	_root().add_child(target)
+	assert_eq(target.import_save_code(code), SaveCode.Error.WRITE_FAILED)
+	_root().remove_child(target)
+	target.free()
+	DirAccess.remove_absolute(blocked_dir)
+	_clear_files()
+
+
 func _free_game(game: Node) -> void:
 	_root().remove_child(game)
 	game.free()

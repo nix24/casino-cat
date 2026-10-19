@@ -181,12 +181,13 @@ func import_save_code(code: String) -> SaveCode.Error:
 	var imported: SaveCode.Imported = SaveCode.import_code(code)
 	if imported.error != SaveCode.Error.NONE:
 		return imported.error
-	save_store.write_json(META_FILE, imported.meta)
+	if save_store.write_json(META_FILE, imported.meta) != SaveStore.Result.OK:
+		return SaveCode.Error.WRITE_FAILED
 	_load_meta()
 	if imported.run.is_empty():
 		save_store.delete_file(RUN_FILE)
-	else:
-		save_store.write_json(RUN_FILE, imported.run)
+	elif save_store.write_json(RUN_FILE, imported.run) != SaveStore.Result.OK:
+		return SaveCode.Error.WRITE_FAILED
 	return SaveCode.Error.NONE
 
 
@@ -328,7 +329,7 @@ func _enter_map(coming_soon_type: int = -1) -> void:
 	_change_scene(map_scene)
 
 
-## Maps are made from the map stream on first arrival (PRD §3.1). T011 may move this into RunRules.
+## Maps are made from the map stream on first arrival (PRD §3.1).
 func _ensure_map() -> void:
 	if run.map != null and run.map.act == run.act:
 		return
@@ -345,8 +346,7 @@ func _enter_battle() -> void:
 		push_error("unknown enemy %s; fighting %s instead" % [enemy_id, DEFAULT_ENEMY_ID])
 		enemy = db.enemy(DEFAULT_ENEMY_ID)
 	assert(enemy != null, "the default enemy is missing from content")
-	_battle_rngs = RngSet.for_seed(run.run_seed)
-	_battle_rngs.apply_states(run.rng_states)
+	_battle_rngs = _run_rngs()
 	var battle: BattleScene = _load_scene(BATTLE_SCENE) as BattleScene
 	battle.setup(enemy, BattleContext.from_run(run, db), _battle_rngs)
 	battle.speed = Settings.battle_speed

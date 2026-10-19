@@ -72,6 +72,17 @@ func test_intent_text() -> void:
 	assert_eq(Strings.intent_text(guard, Suit.Type.SPADES), "🛡 6", "guard")
 
 
+func test_re_suited_move_shows_its_new_suit() -> void:
+	var ctx := _starter_context()
+	ctx.loadout[SLOT_SCRATCH].suit_override = Suit.Type.DIAMONDS
+	var state: BattleState = BattleRules.start(_rat(), ctx, RngSet.for_seed("test").battle).state
+	assert_eq(
+		_lines(state, ctx, SLOT_SCRATCH),
+		PackedStringArray(["Scratch ♦", "6 → 9 (×1.5)", "their hit ×0.75"]),
+		"re-suited scratch attacks as ♦"
+	)
+
+
 func test_status_and_due_text() -> void:
 	var no_statuses: Dictionary[StringName, int] = {}
 	assert_eq(Strings.status_text(no_statuses), "—", "no statuses")

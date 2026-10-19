@@ -50,5 +50,7 @@ func _on_load_pressed() -> void:
 			_refresh_code()
 		SaveCode.Error.TOO_NEW:
 			_load_status.text = Strings.SAVE_CODE_TOO_NEW
+		SaveCode.Error.WRITE_FAILED:
+			_load_status.text = Strings.SAVE_CODE_WRITE_FAILED
 		_:
 			_load_status.text = Strings.SAVE_CODE_BAD

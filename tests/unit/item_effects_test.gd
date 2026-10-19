@@ -101,7 +101,11 @@ func test_ball_of_yarn_halves_next_attack_rounded_down() -> void:
 	attack.hits = 1
 	fight.state.next_intent = attack
 	fight.state.enemy.suit = Suit.Type.CLUBS
-	fight.item(0)
+	var shown: Array[int] = []
+	for event: BattleEvent in fight.item(0):
+		if event.kind == BattleEvent.Kind.INTENT_SHOWN:
+			shown.append(event.amount)
+	assert_eq(shown, [7], "the intent shows the halved number at once")
 	var hits: Array[int] = []
 	for event: BattleEvent in fight.move(SLOT_SCRATCH):
 		if event.kind == BattleEvent.Kind.DAMAGE_DEALT and event.actor == BattleEvent.Actor.ENEMY:

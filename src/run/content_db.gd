@@ -214,8 +214,16 @@ func validate() -> PackedStringArray:
 	var modifier_ids: Array[StringName] = []
 	for modifier_data: ModifierData in _modifiers:
 		modifier_ids.append(modifier_data.id)
+	var item_ids: Array[StringName] = []
+	for item_data: ItemData in _items:
+		item_ids.append(item_data.id)
+	var event_ids: Array[StringName] = []
+	for event_data: EventData in _events:
+		event_ids.append(event_data.id)
 	_report_duplicate_ids(relic_ids, "relic", messages)
 	_report_duplicate_ids(modifier_ids, "modifier", messages)
+	_report_duplicate_ids(item_ids, "item", messages)
+	_report_duplicate_ids(event_ids, "event", messages)
 	_report_empty_ids(move_ids, "move", messages)
 	_report_empty_ids(enemy_ids, "enemy", messages)
 	for move_data: MoveData in _moves:
@@ -368,17 +376,28 @@ static func _check_move_statuses(move_data: MoveData, messages: Array[String]) -
 
 
 static func _check_enemy_statuses(enemy_data: EnemyData, messages: Array[String]) -> void:
-	for intent: IntentData in enemy_data.pattern:
+	for intent: IntentData in _all_intents(enemy_data):
 		if not intent.status.is_empty() and not ALLOWED_STATUSES.has(intent.status):
 			messages.append("enemy %s: unknown status %s" % [enemy_data.id, intent.status])
 
 
 static func _check_enemy_intent_numbers(enemy_data: EnemyData, messages: Array[String]) -> void:
-	for intent: IntentData in enemy_data.pattern:
+	for intent: IntentData in _all_intents(enemy_data):
 		if intent.kind == IntentData.Kind.DEBUFF and intent.turns <= 0:
 			messages.append("enemy %s: DEBUFF intent needs turns > 0" % enemy_data.id)
 		if intent.kind == IntentData.Kind.STEAL_MP and intent.amount <= 0:
 			messages.append("enemy %s: STEAL_MP intent needs amount > 0" % enemy_data.id)
+
+
+## Every intent the enemy can show: its pattern, each boss phase's pattern, and its HP overrides.
+static func _all_intents(enemy_data: EnemyData) -> Array[IntentData]:
+	var intents: Array[IntentData] = enemy_data.pattern.duplicate()
+	for phase: BossPhaseData in enemy_data.phases:
+		intents.append_array(phase.pattern)
+	for override: IntentOverrideData in enemy_data.overrides:
+		if override.intent != null:
+			intents.append(override.intent)
+	return intents
 
 
 func _check_first_battle_pool(messages: Array[String]) -> void:

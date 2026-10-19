@@ -3,6 +3,8 @@ extends RefCounted
 ## What a move would do right now, for the UI to show before the player commits. Computed by the
 ## rules so the UI never does its own math (PRD §4.4).
 
+## The suit the move attacks with: Re-suited's choice when attached (PRD §8.1).
+var suit: Suit.Type = Suit.Type.CLUBS
 ## Damage the move deals this turn, summed over hits, before the enemy's shield.
 var damage: int = 0
 ## Hits the move lands. 0 for moves that don't hit.

@@ -185,6 +185,7 @@ const SAVE_CODE_LOAD: String = "Load code"
 const SAVE_CODE_LOADED: String = "Loaded. Your run is waiting on the title."
 const SAVE_CODE_BAD: String = "That code doesn't add up. Copy the whole line and try again."
 const SAVE_CODE_TOO_NEW: String = "That code is from a newer version of the game."
+const SAVE_CODE_WRITE_FAILED: String = "The code is fine, but this device couldn't save it."
 
 
 ## Glyph for [param suit]: ♠ ♥ ♦ ♣.

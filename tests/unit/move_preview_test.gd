@@ -39,6 +39,18 @@ func test_sewer_rat_opening_previews() -> void:
 	assert_eq(curl_up.missing_mp, 0, "free move")
 
 
+func test_multi_attack_intent_previews_incoming_mult() -> void:
+	var ctx := _starter_context()
+	var state: BattleState = BattleRules.start(_rat(), ctx, RngSet.for_seed("test").battle).state
+	var flurry := IntentData.new()
+	flurry.kind = IntentData.Kind.MULTI_ATTACK
+	flurry.amount = 4
+	flurry.hits = 3
+	state.next_intent = flurry
+	var swipe: MovePreview = BattleRules.preview_move(state, SLOT_SWIPE, ctx)
+	assert_eq(swipe.incoming_mult, 0.75, "a ♠ flurry into a ♦ cat is ×0.75 per hit")
+
+
 func test_events_name_their_target() -> void:
 	var ctx := _starter_context()
 	var rngs := RngSet.for_seed("test")

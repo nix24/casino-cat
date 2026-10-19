@@ -100,6 +100,34 @@ func test_validate_catches_bad_intents() -> void:
 	)
 
 
+func test_validate_checks_phase_and_override_intents() -> void:
+	var db: ContentDb = ContentDb.load_all()
+	var phase_debuff := IntentData.new()
+	phase_debuff.kind = IntentData.Kind.DEBUFF
+	phase_debuff.status = &"bogus"
+	phase_debuff.turns = 2
+	var phase := BossPhaseData.new()
+	phase.pattern.append(phase_debuff)
+	var override_steal := IntentData.new()
+	override_steal.kind = IntentData.Kind.STEAL_MP
+	var override := IntentOverrideData.new()
+	override.intent = override_steal
+	var enemy := EnemyData.new()
+	enemy.id = &"bad_boss"
+	enemy.act = 1
+	enemy.tier = EnemyData.Tier.NORMAL
+	enemy.pattern.append(IntentData.new())
+	enemy.phases.append(phase)
+	enemy.overrides.append(override)
+	var enemies: Array[EnemyData] = db.all_enemies()
+	enemies.append(enemy)
+	var messages: PackedStringArray = _validate(db.all_moves(), enemies, db.tuning())
+	assert_true(messages.has("enemy bad_boss: unknown status bogus"), "; ".join(messages))
+	assert_true(
+		messages.has("enemy bad_boss: STEAL_MP intent needs amount > 0"), "; ".join(messages)
+	)
+
+
 func test_validate_catches_triangle_above_cap() -> void:
 	var db: ContentDb = ContentDb.load_all()
 	var tuning: TuningData = _tuning_copy(db)

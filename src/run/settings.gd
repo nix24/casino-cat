@@ -50,18 +50,30 @@ func load_from_disk() -> void:
 	if error != OK:
 		push_warning("settings: cannot read %s (error %d); using defaults" % [config_path, error])
 		return
-	master_volume = cfg.get_value(SECTION, "master_volume", master_volume)
-	music_volume = cfg.get_value(SECTION, "music_volume", music_volume)
-	sfx_volume = cfg.get_value(SECTION, "sfx_volume", sfx_volume)
-	ui_volume = cfg.get_value(SECTION, "ui_volume", ui_volume)
-	screen_shake = cfg.get_value(SECTION, "screen_shake", screen_shake)
-	pitch_stacking = cfg.get_value(SECTION, "pitch_stacking", pitch_stacking)
-	crt_filter = cfg.get_value(SECTION, "crt_filter", crt_filter)
-	reduced_flashing = cfg.get_value(SECTION, "reduced_flashing", reduced_flashing)
-	reduced_motion = cfg.get_value(SECTION, "reduced_motion", reduced_motion)
-	battle_speed = cfg.get_value(SECTION, "battle_speed", battle_speed)
-	coach_seen = cfg.get_value(SECTION, "coach_seen", coach_seen)
-	fullscreen = cfg.get_value(SECTION, "fullscreen", fullscreen)
+	master_volume = _read(cfg, "master_volume", master_volume)
+	music_volume = _read(cfg, "music_volume", music_volume)
+	sfx_volume = _read(cfg, "sfx_volume", sfx_volume)
+	ui_volume = _read(cfg, "ui_volume", ui_volume)
+	screen_shake = _read(cfg, "screen_shake", screen_shake)
+	pitch_stacking = _read(cfg, "pitch_stacking", pitch_stacking)
+	crt_filter = _read(cfg, "crt_filter", crt_filter)
+	reduced_flashing = _read(cfg, "reduced_flashing", reduced_flashing)
+	reduced_motion = _read(cfg, "reduced_motion", reduced_motion)
+	battle_speed = _read(cfg, "battle_speed", battle_speed)
+	coach_seen = _read(cfg, "coach_seen", coach_seen)
+	fullscreen = _read(cfg, "fullscreen", fullscreen)
+
+
+## The value of [param key], or [param current] when the file holds another type. A hand-edited
+## file must not break the boot; a whole number is fine where a volume (float) is expected.
+func _read(cfg: ConfigFile, key: String, current: Variant) -> Variant:
+	var value: Variant = cfg.get_value(SECTION, key, current)
+	if typeof(value) == typeof(current):
+		return value
+	if typeof(current) == TYPE_FLOAT and typeof(value) == TYPE_INT:
+		return float(value as int)
+	push_warning("settings: %s has the wrong type; using %s" % [key, current])
+	return current
 
 
 ## Writes every setting to [member config_path]. A failed write warns; values stay in memory.

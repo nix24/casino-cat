@@ -35,7 +35,7 @@ static func start(enemy: EnemyData, ctx: BattleContext, _rng: SeededRng) -> Batt
 	opening.events.append(BattleEvent.new(BattleEvent.Kind.BATTLE_STARTED))
 	_battle_start_hooks(state, ctx, opening.events)
 	opening.events.append(_turn_started_event(state.turn))
-	opening.events.append(_intent_shown_event(state.next_intent))
+	opening.events.append(_intent_shown_event(state, state.next_intent))
 	return opening
 
 
@@ -88,17 +88,18 @@ static func preview_move(state: BattleState, slot: int, ctx: BattleContext) -> M
 	var move: MoveData = _move_for_slot(state, slot, ctx)
 	var instance: MoveInstance = state.equipped[slot]
 	var preview := MovePreview.new()
+	preview.suit = suit_of(move, instance)
 	preview.mp_cost = _mp_cost(state, move, instance, ctx)
 	preview.affordable = preview.mp_cost <= state.mp
 	preview.missing_mp = maxi(preview.mp_cost - state.mp, 0)
 	if hits_directly(move):
 		var repeat_count: int = _next_repeat_count(state, move)
 		preview.hits = move.hits
-		preview.triangle_mult = Suit.damage_multiplier(suit_of(move, instance), state.enemy.suit)
+		preview.triangle_mult = Suit.damage_multiplier(preview.suit, state.enemy.suit)
 		preview.damage = _player_hit_amount(state, move, instance, repeat_count, ctx) * move.hits
 	elif move.category == MoveData.Category.GAMBLE:
 		preview.odds = GambleRules.preview(move.gamble, state, ctx)
-	if state.next_intent.kind == IntentData.Kind.ATTACK:
+	if _is_attack(state.next_intent):
 		var suit_after: Suit.Type = _suit_after_move(state, move, instance, ctx.tuning)
 		preview.incoming_mult = Suit.damage_multiplier(state.enemy.suit, suit_after)
 	return preview
@@ -202,6 +203,7 @@ static func _item_effect(
 			state.cat.flat_damage_bonus += effect.amount
 		EffectData.Kind.WEAKEN_NEXT_INTENT:
 			state.weaken_next_attack_pct = effect.amount
+			events.append(_intent_shown_event(state, state.next_intent))
 		EffectData.Kind.GUARANTEE_TOP_TIER:
 			state.guarantee_top_tier = true
 		EffectData.Kind.SET_ENEMY_SUIT:
@@ -574,7 +576,7 @@ static func _check_phase(state: BattleState, events: Array[BattleEvent]) -> void
 		state.enemy.suit = next_phase.suit
 		state.intent_index = 0
 		state.next_intent = next_phase.pattern[0]
-		events.append(_intent_shown_event(state.next_intent))
+		events.append(_intent_shown_event(state, state.next_intent))
 
 
 ## The intents the enemy loops through now: its phase pattern, or its pattern.
@@ -592,7 +594,7 @@ static func _enemy_acts(state: BattleState, tuning: TuningData, events: Array[Ba
 	state.override_acted = override != null
 	if override != null:
 		intent = override.intent
-		events.append(_intent_shown_event(intent))
+		events.append(_intent_shown_event(state, intent))
 	var acted := BattleEvent.new(BattleEvent.Kind.ENEMY_ACTED, BattleEvent.Actor.ENEMY)
 	acted.reason = _intent_kind_name(intent.kind)
 	events.append(acted)
@@ -634,15 +636,24 @@ static func _enemy_special(
 			assert(false, "special intent %s is not implemented" % intent.special_id)
 
 
+## The base amount of [param intent] before multipliers. Ball of Yarn cuts the next attack only,
+## rounded down (PRD §8.3); other intent kinds keep their amount.
+static func _attack_base(state: BattleState, intent: IntentData) -> int:
+	if not _is_attack(intent) or state.weaken_next_attack_pct == 0:
+		return intent.amount
+	return floori(intent.amount * state.weaken_next_attack_pct / 100.0)
+
+
+static func _is_attack(intent: IntentData) -> bool:
+	return intent.kind == IntentData.Kind.ATTACK or intent.kind == IntentData.Kind.MULTI_ATTACK
+
+
 ## Enemy attacks are never repeat-penalised. The cat's suit is the one after this turn's shift.
 static func _enemy_attacks(
 	state: BattleState, intent: IntentData, events: Array[BattleEvent]
 ) -> void:
-	var base: int = intent.amount
-	if state.weaken_next_attack_pct > 0:
-		# Ball of Yarn: this attack only, rounded down (PRD §8.3).
-		base = floori(intent.amount * state.weaken_next_attack_pct / 100.0)
-		state.weaken_next_attack_pct = 0
+	var base: int = _attack_base(state, intent)
+	state.weaken_next_attack_pct = 0
 	var amount: int = (
 		Damage
 		. hit_amount(
@@ -694,7 +705,7 @@ static func _end_turn(
 	state.next_intent = _pattern(state)[state.intent_index]
 	state.turn += 1
 	events.append(_turn_started_event(state.turn))
-	events.append(_intent_shown_event(state.next_intent))
+	events.append(_intent_shown_event(state, state.next_intent))
 
 
 static func _regen(target: Combatant, actor: BattleEvent.Actor, events: Array[BattleEvent]) -> void:
@@ -878,10 +889,11 @@ static func _turn_started_event(turn: int) -> BattleEvent:
 	return event
 
 
-static func _intent_shown_event(intent: IntentData) -> BattleEvent:
+## The intent as the cat sees it: an attack shows its Ball of Yarn reduction, so the number is true.
+static func _intent_shown_event(state: BattleState, intent: IntentData) -> BattleEvent:
 	var event := BattleEvent.new(BattleEvent.Kind.INTENT_SHOWN, BattleEvent.Actor.ENEMY)
 	event.reason = _intent_kind_name(intent.kind)
-	event.amount = intent.amount
+	event.amount = _attack_base(state, intent)
 	event.status = intent.status if intent.kind != IntentData.Kind.SPECIAL else intent.special_id
 	event.turns = intent.turns
 	event.hits = intent.hits

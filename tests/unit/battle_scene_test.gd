@@ -89,6 +89,16 @@ func test_short_loadout_hides_spare_buttons() -> void:
 	assert_true(not _move_button(scene, 3).visible, "the 4th button is hidden")
 	assert_true(_move_button(scene, 3).disabled, "the 4th button is disabled")
 	assert_true(_move_button(scene, 2).visible, "the 3rd button stays")
+	assert_eq(
+		_move_button(scene, 2).find_valid_focus_neighbor(SIDE_RIGHT),
+		_move_button(scene, 0),
+		"right from the 3rd button wraps to the 1st"
+	)
+	assert_eq(
+		_move_button(scene, 0).find_valid_focus_neighbor(SIDE_LEFT),
+		_move_button(scene, 2),
+		"left from the 1st button wraps to the 3rd"
+	)
 	scene.use_move(3)
 	scene.use_move(SLOT_SWIPE)
 	assert_eq(_enemy_hp_text(scene), "11/22", "a swipe still lands with 3 moves")
